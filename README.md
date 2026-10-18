@@ -1,16 +1,21 @@
-# 👋🧩 Morphe Patches template
+# TVer 7.2.1 — experimental Morphe patches
 
-Template repository for Morphe Patches.
+Unofficial TVer patches for testing Android picture-in-picture (PiP) and client-side ad suppression. Not affiliated with TVer or Morphe.
 
 ## ❓ About
 
-Patches for apps I like.
+Targets **`jp.hamitv.hamiand1` version `7.2.1` (versionCode `535`)**.
 
-<!-- TODO: Update this about section with a brief introduction/summary about this repo and what it offers. -->
+- **TVer: suppress player ads**: attempts to skip pre-roll scheduling and client-side player ad hooks. Some ads may remain or playback may break.
+- **TVer: Android system PiP**: opts video activities in to Android PiP and attempts to enter it when leaving an active video screen. TVer may still pause playback.
+
+**Status: experimental. Bytecode targets were checked against the APK, but patch compilation, installation and playback have not yet been verified.**
+
+Development happens on the `dev` branch. The template release workflow publishes `feat:`/`fix:` changes; `chore:` commits only verify compilation.
 
 ### How to use these patches
 
-Click here to add these patches to Morphe: https://morphe.software/add-source?github=xyz-user/xyz-patches
+Click here to add these patches to Morphe: https://morphe.software/add-source?github=yuubinnkyoku/morphe-tver-patch
 
 ## 🩹 Patches list
 
@@ -88,4 +93,4 @@ See the [Morphe documentation](https://github.com/MorpheApp/morphe-documentation
 
 ## 📜 License
 
-UserXYZ Patches are licensed under the [GNU General Public License v3.0](LICENSE)
+yuubinnkyoku TVer patches are licensed under the [GNU General Public License v3.0](LICENSE)
