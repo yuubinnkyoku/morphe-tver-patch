@@ -34,37 +34,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # The first dev.10 publish was interrupted after tagging but before
-      # pushing its release-channel git note. Restore that one missing note
-      # so semantic-release correctly chooses dev.11 rather than reusing dev.10.
-      - name: Restore interrupted dev.10 release metadata
-        if: github.ref == 'refs/heads/dev'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          note_ref="refs/notes/semantic-release-v1.0.0-dev.10"
-          if gh api "repos/$GITHUB_REPOSITORY/git/ref/notes/semantic-release-v1.0.0-dev.10" >/dev/null 2>&1; then
-            echo "dev.10 release-channel note already exists"
-            exit 0
-          fi
-          tag_sha="$(git rev-list -n 1 v1.0.0-dev.10)"
-          if [ "$tag_sha" != "2af9d94369bd29a2379517944947a0503a94c492" ]; then
-            echo "::error::dev.10 tag does not point to the expected interrupted release commit"
-            exit 1
-          fi
-          blob_sha="$(gh api -X POST "repos/$GITHUB_REPOSITORY/git/blobs" \
-            -f content='{"channels":["dev"]}' -f encoding=utf-8 --jq '.sha')"
-          tree_sha="$(jq -cn --arg path "$tag_sha" --arg sha "$blob_sha" \
-            '{tree:[{path:$path,mode:"100644",type:"blob",sha:$sha}]}' |
-            gh api -X POST "repos/$GITHUB_REPOSITORY/git/trees" --input - --jq '.sha')"
-          commit_sha="$(jq -cn --arg tree "$tree_sha" \
-            '{message:"Restore missing semantic-release dev.10 channel note",tree:$tree,parents:[]}' |
-            gh api -X POST "repos/$GITHUB_REPOSITORY/git/commits" --input - --jq '.sha')"
-          jq -cn --arg ref "$note_ref" --arg sha "$commit_sha" '{ref:$ref,sha:$sha}' |
-            gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" --input -
-          echo "Restored $note_ref for $tag_sha"
-
       # Semantic release runs its own Gradle build command.
       # Only dev and main branch will generate a release as specified by .releaserc
       - name: Release
