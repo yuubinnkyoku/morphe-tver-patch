@@ -1,3 +1,10 @@
+## [1.0.0-dev.11](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.10...v1.0.0-dev.11) (2026-10-18)
+
+### 🐛 Bug Fixes
+
+* allow Home PiP audio fallback when activity Intent is absent ([5ed811a](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5ed811a9734ad405fbcfe4e7689d3774e9c170a5))
+* restore interrupted dev.10 channel note to unblock dev.11 release ([46c0080](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/46c00802382203ee7d434354982d4ea40e6e7320))
+
 ## [1.0.0-dev.10](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.9...v1.0.0-dev.10) (2026-10-18)
 
 ### 🐛 Bug Fixes
