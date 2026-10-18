@@ -219,6 +219,15 @@ val tverPipPatch = bytecodePatch(
                     move-result-object v2
                     invoke-virtual {p0, v2}, Landroid/app/Activity;->enterPictureInPictureMode(Landroid/app/PictureInPictureParams;)Z
                     move-result v2
+                    if-eqz v2, :leave_pip_failed
+                    const-string v0, "TVerPipDebug"
+                    const-string v1, "LEAVE_HINT_RESULT: true"
+                    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                    goto :done
+                    :leave_pip_failed
+                    const-string v0, "TVerPipDebug"
+                    const-string v1, "LEAVE_HINT_RESULT: false"
+                    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
                 """.trimIndent(),
                 ExternalLabel("done", method.getInstruction(0)),
             )
@@ -282,14 +291,17 @@ val tverPipPatch = bytecodePatch(
                             move-result-object v2
                             invoke-virtual {p0, v2}, Landroid/app/Activity;->enterPictureInPictureMode(Landroid/app/PictureInPictureParams;)Z
                             move-result v2
+                            if-eqz v2, :request_failed
                             const-string v0, "TVerPipDebug"
-                            const-string v1, "PIP_REQUEST_RESULT: "
-                            invoke-static {v2}, Ljava/lang/String;->valueOf(Z)Ljava/lang/String;
-                            move-result-object v2
-                            invoke-virtual {v1, v2}, Ljava/lang/String;->concat(Ljava/lang/String;)Ljava/lang/String;
-                            move-result-object v1
+                            const-string v1, "PIP_REQUEST_RESULT: true"
                             invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
                             const/4 v0, 0x1
+                            return v0
+                            :request_failed
+                            const-string v0, "TVerPipDebug"
+                            const-string v1, "PIP_REQUEST_RESULT: false; allowing legacy Home fallback"
+                            invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                            const/4 v0, 0x0
                             return v0
                             :not_playing
                             const-string v0, "TVerPipDebug"
