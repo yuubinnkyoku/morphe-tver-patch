@@ -8,6 +8,7 @@ import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod.Companion.toMutable
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 
@@ -75,11 +76,11 @@ val tverPipPatch = bytecodePatch(
             val cls = mutableClassDefBy(classDefBy(descriptor))
             val method = cls.methods.single { it.name == lifecycleName }
             val instructions = requireNotNull(method.implementation).instructions.toList()
-            // Some generated DEX methods include non-return instructions at the end;
-            // patch actual return sites rather than assuming the final instruction
-            // is RETURN_VOID. Reverse order preserves original instruction indices.
+            // Match the Opcode enum, not Opcode.name (which is the Smali spelling
+            // "return-void", not the enum constant "RETURN_VOID").
+            // Reverse order preserves original instruction indices.
             val returnIndices = instructions.indices.filter {
-                instructions[it].opcode.name == "RETURN_VOID"
+                instructions[it].opcode == Opcode.RETURN_VOID
             }
             check(returnIndices.isNotEmpty()) {
                 "No return-void found in $descriptor->$lifecycleName; " +
