@@ -1,3 +1,9 @@
+## [1.0.0-dev.7](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.6...v1.0.0-dev.7) (2026-10-18)
+
+### 🐛 Bug Fixes
+
+* call valid enterPictureInPictureMode(PictureInPictureParams) overload ([502768a](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/502768a9df05d53dcb6b9b7cccbb20550cde84b4))
+
 ## [1.0.0-dev.6](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.5...v1.0.0-dev.6) (2026-10-18)
 
 ### 🐛 Bug Fixes
