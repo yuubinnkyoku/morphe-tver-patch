@@ -1,3 +1,9 @@
+## [1.0.0-dev.10](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.9...v1.0.0-dev.10) (2026-10-18)
+
+### 🐛 Bug Fixes
+
+* allow legacy Home fallback when automatic PiP request fails ([29f3b8c](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/29f3b8cb72c11c45c4b7565545612dafb6123ec1))
+
 ## [1.0.0-dev.9](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.8...v1.0.0-dev.9) (2026-10-18)
 
 ### 🐛 Bug Fixes
