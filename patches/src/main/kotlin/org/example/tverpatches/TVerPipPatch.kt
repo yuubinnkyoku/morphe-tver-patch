@@ -29,17 +29,30 @@ val tverPipManifestPatch = resourcePatch {
             "jp.hamitv.hamiand1.tver.ui.olympic.activity.OlympicVideoActivity",
         )
         document("AndroidManifest.xml").use { doc ->
-            val ns = "http://schemas.android.com/apk/res/android"
+            // Morphe's binary-XML document uses prefixed attribute names.
+            // getAttributeNS() can return "" even though android:name exists.
             val elements = doc.getElementsByTagName("activity")
-            var edited = 0
+            val found = mutableSetOf<String>()
+            val available = mutableListOf<String>()
             for (i in 0 until elements.length) {
                 val element = elements.item(i) as org.w3c.dom.Element
-                if (element.getAttributeNS(ns, "name") !in activityNames) continue
-                element.setAttributeNS(ns, "android:supportsPictureInPicture", "true")
-                element.setAttributeNS(ns, "android:resizeableActivity", "true")
-                edited++
+                val rawName = element.getAttribute("android:name").ifEmpty {
+                    element.getAttribute("name")
+                }
+                available += rawName
+                val fullName = when {
+                    rawName.startsWith(".") -> "jp.hamitv.hamiand1$rawName"
+                    '.' !in rawName -> "jp.hamitv.hamiand1.$rawName"
+                    else -> rawName
+                }
+                if (fullName !in activityNames) continue
+                element.setAttribute("android:supportsPictureInPicture", "true")
+                element.setAttribute("android:resizeableActivity", "true")
+                found += fullName
             }
-            check(edited == activityNames.size) { "Could not find both expected video activities" }
+            check(found == activityNames) {
+                "PiP activity mismatch: missing=${activityNames - found}, present=$available"
+            }
         }
     }
 }
