@@ -74,30 +74,56 @@ val tverPipPatch = bytecodePatch(
         fun markFragment(descriptor: String, lifecycleName: String, visible: Boolean) {
             val cls = mutableClassDefBy(classDefBy(descriptor))
             val method = cls.methods.single { it.name == lifecycleName }
-            val impl = requireNotNull(method.implementation)
-            val last = impl.instructions.size - 1
-            check(last >= 0 && method.getInstruction(last).opcode.name == "RETURN_VOID") {
-                "Expected terminal return-void in player lifecycle"
+            val instructions = requireNotNull(method.implementation).instructions.toList()
+            // Some generated DEX methods include non-return instructions at the end;
+            // patch actual return sites rather than assuming the final instruction
+            // is RETURN_VOID. Reverse order preserves original instruction indices.
+            val returnIndices = instructions.indices.filter {
+                instructions[it].opcode.name == "RETURN_VOID"
+            }
+            check(returnIndices.isNotEmpty()) {
+                "No return-void found in $descriptor->$lifecycleName; " +
+                    "last opcode: ${instructions.lastOrNull()?.opcode}"
             }
 
-            // The original code has already finished. It is safe to reuse p2
-            // in onViewCreated or p0 in onDestroyView as a temporary boolean.
-            val boolRegister = if (lifecycleName == "onViewCreated") "p2" else "p0"
-            val value = if (visible) "0x1" else "0x0"
-            method.addInstructionsWithLabels(
-                last,
+            // APK inspection confirms at least one local register in onViewCreated
+            // and two locals in onDestroyView for all three supported fragments.
+            // Reuse incoming parameters only immediately before returning, so
+            // original playback logic never observes clobbered registers.
+            val snippet = if (visible) {
                 """
                     invoke-virtual {p0}, Landroidx/fragment/app/Fragment;->getActivity()Landroidx/fragment/app/FragmentActivity;
                     move-result-object v0
                     if-eqz v0, :finished
                     invoke-virtual {v0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                     move-result-object v0
+                    if-eqz v0, :finished
+                    const-string p1, "$VIDEO_VISIBLE_EXTRA"
+                    const/4 p2, 0x1
+                    invoke-virtual {v0, p1, p2}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Z)Landroid/content/Intent;
+                """.trimIndent()
+            } else {
+                """
+                    invoke-virtual {p0}, Landroidx/fragment/app/Fragment;->getActivity()Landroidx/fragment/app/FragmentActivity;
+                    move-result-object v0
+                    if-eqz v0, :finished
+                    invoke-virtual {v0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
+                    move-result-object v0
+                    if-eqz v0, :finished
                     const-string v1, "$VIDEO_VISIBLE_EXTRA"
-                    const/4 $boolRegister, $value
-                    invoke-virtual {v0, v1, $boolRegister}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Z)Landroid/content/Intent;
-                """.trimIndent(),
-                ExternalLabel("finished", method.getInstruction(last)),
-            )
+                    const/4 p0, 0x0
+                    invoke-virtual {v0, v1, p0}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Z)Landroid/content/Intent;
+                """.trimIndent()
+            }
+            returnIndices.asReversed().forEach { index ->
+                // Branch target is the original return, not newly inserted code.
+                val originalReturn = method.getInstruction(index)
+                method.addInstructionsWithLabels(
+                    index,
+                    snippet,
+                    ExternalLabel("finished", originalReturn),
+                )
+            }
         }
 
         videoFragments.forEach { descriptor ->
