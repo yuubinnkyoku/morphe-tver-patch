@@ -233,6 +233,83 @@ val tverPipPatch = bytecodePatch(
             "Ljp/hamitv/hamiand1/tver/ui/olympic/activity/Hilt_OlympicVideoActivity;",
         )
 
+        // Android 11+ can request PiP directly when the user moves Home.
+        // Returning false keeps the system's legacy onUserLeaveHint fallback.
+        fun addPictureInPictureRequestedHook(activityType: String) {
+            val cls = mutableClassDefBy(classDefBy(activityType))
+            check(cls.methods.none { it.name == "onPictureInPictureRequested" }) {
+                "Activity already overrides onPictureInPictureRequested"
+            }
+            cls.methods.add(
+                ImmutableMethod(
+                    activityType,
+                    "onPictureInPictureRequested",
+                    emptyList(),
+                    "Z",
+                    AccessFlags.PUBLIC.value,
+                    null,
+                    null,
+                    MutableMethodImplementation(4),
+                ).toMutable().apply {
+                    addInstructions(
+                        0,
+                        """
+                            const-string v0, "TVerPipDebug"
+                            const-string v1, "ON_PIP_REQUESTED: system callback"
+                            invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                            invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
+                            move-result-object v0
+                            if-eqz v0, :check_audio
+                            const-string v1, "$VIDEO_VISIBLE_EXTRA"
+                            const/4 v2, 0x0
+                            invoke-virtual {v0, v1, v2}, Landroid/content/Intent;->getBooleanExtra(Ljava/lang/String;Z)Z
+                            move-result v2
+                            if-nez v2, :request_pip
+                            :check_audio
+                            const-string v0, "audio"
+                            invoke-virtual {p0, v0}, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
+                            move-result-object v0
+                            instance-of v1, v0, Landroid/media/AudioManager;
+                            if-eqz v1, :not_playing
+                            check-cast v0, Landroid/media/AudioManager;
+                            invoke-virtual {v0}, Landroid/media/AudioManager;->isMusicActive()Z
+                            move-result v2
+                            if-eqz v2, :not_playing
+                            :request_pip
+                            new-instance v2, Landroid/app/PictureInPictureParams${'$'}Builder;
+                            invoke-direct {v2}, Landroid/app/PictureInPictureParams${'$'}Builder;-><init>()V
+                            invoke-virtual {v2}, Landroid/app/PictureInPictureParams${'$'}Builder;->build()Landroid/app/PictureInPictureParams;
+                            move-result-object v2
+                            invoke-virtual {p0, v2}, Landroid/app/Activity;->enterPictureInPictureMode(Landroid/app/PictureInPictureParams;)Z
+                            move-result v2
+                            const-string v0, "TVerPipDebug"
+                            const-string v1, "PIP_REQUEST_RESULT: "
+                            invoke-static {v2}, Ljava/lang/String;->valueOf(Z)Ljava/lang/String;
+                            move-result-object v2
+                            invoke-virtual {v1, v2}, Ljava/lang/String;->concat(Ljava/lang/String;)Ljava/lang/String;
+                            move-result-object v1
+                            invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                            const/4 v0, 0x1
+                            return v0
+                            :not_playing
+                            const-string v0, "TVerPipDebug"
+                            const-string v1, "PIP_REQUEST_NO_PLAYBACK: falling back to leave hint"
+                            invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                            const/4 v0, 0x0
+                            return v0
+                        """.trimIndent(),
+                    )
+                }
+            )
+        }
+
+        addPictureInPictureRequestedHook(
+            "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;",
+        )
+        addPictureInPictureRequestedHook(
+            "Ljp/hamitv/hamiand1/tver/ui/olympic/activity/OlympicVideoActivity;",
+        )
+
         // Diagnostic overlay intentionally appears on the entire activity,
         // rather than depending on a player fragment lifecycle callback.
         // This distinguishes a missing player hook from a rejected PiP request.
