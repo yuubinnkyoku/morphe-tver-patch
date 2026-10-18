@@ -188,12 +188,13 @@ val tverPipPatch = bytecodePatch(
                     invoke-super {p0}, $parent->onUserLeaveHint()V
                     invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                     move-result-object v0
-                    if-eqz v0, :done
+                    if-eqz v0, :check_audio
                     const-string v1, "$VIDEO_VISIBLE_EXTRA"
                     const/4 v2, 0x0
                     invoke-virtual {v0, v1, v2}, Landroid/content/Intent;->getBooleanExtra(Ljava/lang/String;Z)Z
                     move-result v2
                     if-nez v2, :pip_allowed
+                    :check_audio
                     const-string v0, "audio"
                     invoke-virtual {p0, v0}, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
                     move-result-object v0
