@@ -97,6 +97,9 @@ val tverPipPatch = bytecodePatch(
                 // Temporarily reuse p1/p2/p0 only immediately before a return.
                 // This enables Android 12+ automatic PiP on Home gestures.
                 """
+                    const-string v0, "TVerPipDebug"
+                    const-string p1, "PLAYER_VISIBLE: $descriptor"
+                    invoke-static {v0, p1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
                     invoke-virtual {p0}, Landroidx/fragment/app/Fragment;->getActivity()Landroidx/fragment/app/FragmentActivity;
                     move-result-object v0
                     if-eqz v0, :finished
@@ -120,6 +123,9 @@ val tverPipPatch = bytecodePatch(
                 // v0/v1 are both locals in all onDestroyView methods.
                 // p0 is free to reuse because the method is about to return.
                 """
+                    const-string v0, "TVerPipDebug"
+                    const-string v1, "PLAYER_CLOSED: $descriptor"
+                    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
                     invoke-virtual {p0}, Landroidx/fragment/app/Fragment;->getActivity()Landroidx/fragment/app/FragmentActivity;
                     move-result-object v0
                     if-eqz v0, :finished
@@ -176,6 +182,9 @@ val tverPipPatch = bytecodePatch(
             method.addInstructionsWithLabels(
                 0,
                 """
+                    const-string v0, "TVerPipDebug"
+                    const-string v1, "ON_USER_LEAVE_HINT: received"
+                    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
                     invoke-super {p0}, $parent->onUserLeaveHint()V
                     invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                     move-result-object v0
