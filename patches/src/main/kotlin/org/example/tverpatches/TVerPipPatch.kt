@@ -92,23 +92,46 @@ val tverPipPatch = bytecodePatch(
             // Reuse incoming parameters only immediately before returning, so
             // original playback logic never observes clobbered registers.
             val snippet = if (visible) {
+                // v0 is a verified local in all onViewCreated methods.
+                // Temporarily reuse p1/p2/p0 only immediately before a return.
+                // This enables Android 12+ automatic PiP on Home gestures.
                 """
                     invoke-virtual {p0}, Landroidx/fragment/app/Fragment;->getActivity()Landroidx/fragment/app/FragmentActivity;
                     move-result-object v0
                     if-eqz v0, :finished
-                    invoke-virtual {v0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
+                    move-object p1, v0
+                    invoke-virtual {p1}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                     move-result-object v0
                     if-eqz v0, :finished
-                    const-string p1, "$VIDEO_VISIBLE_EXTRA"
-                    const/4 p2, 0x1
-                    invoke-virtual {v0, p1, p2}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Z)Landroid/content/Intent;
+                    const-string p2, "$VIDEO_VISIBLE_EXTRA"
+                    const/4 p0, 0x1
+                    invoke-virtual {v0, p2, p0}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Z)Landroid/content/Intent;
+                    new-instance v0, Landroid/app/PictureInPictureParams$Builder;
+                    invoke-direct {v0}, Landroid/app/PictureInPictureParams$Builder;-><init>()V
+                    const/4 p0, 0x1
+                    invoke-virtual {v0, p0}, Landroid/app/PictureInPictureParams$Builder;->setAutoEnterEnabled(Z)Landroid/app/PictureInPictureParams$Builder;
+                    move-result-object v0
+                    invoke-virtual {v0}, Landroid/app/PictureInPictureParams$Builder;->build()Landroid/app/PictureInPictureParams;
+                    move-result-object v0
+                    invoke-virtual {p1, v0}, Landroid/app/Activity;->setPictureInPictureParams(Landroid/app/PictureInPictureParams;)V
                 """.trimIndent()
             } else {
+                // v0/v1 are both locals in all onDestroyView methods.
+                // p0 is free to reuse because the method is about to return.
                 """
                     invoke-virtual {p0}, Landroidx/fragment/app/Fragment;->getActivity()Landroidx/fragment/app/FragmentActivity;
                     move-result-object v0
                     if-eqz v0, :finished
-                    invoke-virtual {v0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
+                    move-object p0, v0
+                    new-instance v0, Landroid/app/PictureInPictureParams$Builder;
+                    invoke-direct {v0}, Landroid/app/PictureInPictureParams$Builder;-><init>()V
+                    const/4 v1, 0x0
+                    invoke-virtual {v0, v1}, Landroid/app/PictureInPictureParams$Builder;->setAutoEnterEnabled(Z)Landroid/app/PictureInPictureParams$Builder;
+                    move-result-object v0
+                    invoke-virtual {v0}, Landroid/app/PictureInPictureParams$Builder;->build()Landroid/app/PictureInPictureParams;
+                    move-result-object v0
+                    invoke-virtual {p0, v0}, Landroid/app/Activity;->setPictureInPictureParams(Landroid/app/PictureInPictureParams;)V
+                    invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                     move-result-object v0
                     if-eqz v0, :finished
                     const-string v1, "$VIDEO_VISIBLE_EXTRA"
