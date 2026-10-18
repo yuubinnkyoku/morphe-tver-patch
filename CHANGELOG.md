@@ -1,3 +1,9 @@
+## [1.0.0-dev.3](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.2...v1.0.0-dev.3) (2026-10-18)
+
+### 🐛 Bug Fixes
+
+* handle PiP player lifecycle returns without assuming terminal instruction ([157c052](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/157c0520c67e355004c0eecae0058dc5d2881183))
+
 ## [1.0.0-dev.2](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.1...v1.0.0-dev.2) (2026-10-18)
 
 ### 🐛 Bug Fixes
