@@ -9,7 +9,17 @@ Targets **`jp.hamitv.hamiand1` version `7.2.1` (versionCode `535`)**.
 - **TVer: suppress player ads**: attempts to skip pre-roll scheduling and client-side player ad hooks. Some ads may remain or playback may break.
 - **TVer: Android system PiP**: opts video activities in to Android PiP and attempts to enter it when leaving an active video screen. TVer may still pause playback.
 
-**Status: experimental. Bytecode targets were checked against the APK, but patch compilation, installation and playback have not yet been verified.**
+**Status: experimental prerelease.** GitHub Actions compile verification passed, but successful APK patching, installation, ad suppression and background PiP playback have **not** been confirmed on a device.
+
+### Prerelease testing
+
+1. In Morphe, add the [patch source](https://morphe.software/add-source?github=yuubinnkyoku/morphe-tver-patch) and enable prereleases for this source.
+2. Select the original TVer 7.2.1 APK and choose either or both experimental patches.
+3. Verify that the patched app installs, starts, and can play an ordinary video.
+4. For PiP, start video playback and use Home to check whether Android enters its system floating video window.
+5. For ad suppression, check pre-roll and mid-roll separately; neither is guaranteed to be removed.
+
+**Be prepared to restore the original app if patching fails, playback stalls, or the app crashes.**
 
 Development happens on the `dev` branch. The template release workflow publishes `feat:`/`fix:` changes; `chore:` commits only verify compilation.
 
