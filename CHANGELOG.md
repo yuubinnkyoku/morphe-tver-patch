@@ -1,3 +1,10 @@
+## [1.0.0-dev.5](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.4...v1.0.0-dev.5) (2026-10-18)
+
+### 🐛 Bug Fixes
+
+* enable Android 12 automatic PiP during TVer video playback ([8b17cef](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/8b17cef351ed8ba192cb4bec1a45d1e33e8caf83))
+* escape nested PiP builder class name in Kotlin smali strings ([7f15aac](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/7f15aac8fcf7eaa5d171161f426dbd4d449555b4))
+
 ## [1.0.0-dev.4](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.3...v1.0.0-dev.4) (2026-10-18)
 
 ### 🐛 Bug Fixes
