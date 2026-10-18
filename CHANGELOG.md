@@ -1,3 +1,9 @@
+## [1.0.0-dev.4](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.3...v1.0.0-dev.4) (2026-10-18)
+
+### 🐛 Bug Fixes
+
+* compare actual dex opcode enum when locating PiP return instructions ([2ee0005](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/2ee0005e469d2f9f19c0c26723b320571e56a9cb))
+
 ## [1.0.0-dev.3](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.2...v1.0.0-dev.3) (2026-10-18)
 
 ### 🐛 Bug Fixes
