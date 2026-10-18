@@ -215,7 +215,7 @@ val tverPipPatch = bytecodePatch(
         // This distinguishes a missing player hook from a rejected PiP request.
         fun addDiagnosticOverlay(activityType: String) {
             val cls = mutableClassDefBy(classDefBy(activityType))
-            val listener = "Landroid/view/View${'OnClickListener}OnClickListener;"
+            val listener = "Landroid/view/View${'$'}OnClickListener;"
             check(listener !in cls.interfaces) { "Activity already implements View.OnClickListener" }
             cls.interfaces.add(listener)
 
@@ -279,16 +279,16 @@ val tverPipPatch = bytecodePatch(
                     const-string v3, "PiP TEST"
                     invoke-virtual {v2, v3}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
                     invoke-virtual {v2, v1}, Landroid/view/View;->setTag(Ljava/lang/Object;)V
-                    invoke-virtual {v2, p0}, Landroid/view/View;->setOnClickListener(Landroid/view/View${'OnClickListener}OnClickListener;)V
-                    new-instance v4, Landroid/widget/FrameLayout${'LayoutParams}LayoutParams;
+                    invoke-virtual {v2, p0}, Landroid/view/View;->setOnClickListener(Landroid/view/View${'$'}OnClickListener;)V
+                    new-instance v4, Landroid/widget/FrameLayout${'$'}LayoutParams;
                     const/16 v5, -0x2
                     const/16 v6, 0x35
-                    invoke-direct {v4, v5, v5, v6}, Landroid/widget/FrameLayout${'LayoutParams}LayoutParams;-><init>(III)V
+                    invoke-direct {v4, v5, v5, v6}, Landroid/widget/FrameLayout${'$'}LayoutParams;-><init>(III)V
                     const/16 v6, 0x10
                     const/16 v7, 0x48
-                    invoke-virtual {v4, v6, v7, v6, v6}, Landroid/view/ViewGroup${'MarginLayoutParams}MarginLayoutParams;->setMargins(IIII)V
+                    invoke-virtual {v4, v6, v7, v6, v6}, Landroid/view/ViewGroup${'$'}MarginLayoutParams;->setMargins(IIII)V
                     check-cast v0, Landroid/view/ViewGroup;
-                    invoke-virtual {v0, v2, v4}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup${'LayoutParams}LayoutParams;)V
+                    invoke-virtual {v0, v2, v4}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup${'$'}LayoutParams;)V
                     const-string v3, "TVerPipDebug"
                     const-string v4, "BUTTON_CREATED: visible overlay added"
                     invoke-static {v3, v4}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
