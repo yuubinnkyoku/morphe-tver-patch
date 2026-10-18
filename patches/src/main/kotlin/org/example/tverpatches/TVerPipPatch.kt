@@ -106,12 +106,12 @@ val tverPipPatch = bytecodePatch(
                     const-string p2, "$VIDEO_VISIBLE_EXTRA"
                     const/4 p0, 0x1
                     invoke-virtual {v0, p2, p0}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Z)Landroid/content/Intent;
-                    new-instance v0, Landroid/app/PictureInPictureParams$Builder;
-                    invoke-direct {v0}, Landroid/app/PictureInPictureParams$Builder;-><init>()V
+                    new-instance v0, Landroid/app/PictureInPictureParams${'$'}Builder;
+                    invoke-direct {v0}, Landroid/app/PictureInPictureParams${'$'}Builder;-><init>()V
                     const/4 p0, 0x1
-                    invoke-virtual {v0, p0}, Landroid/app/PictureInPictureParams$Builder;->setAutoEnterEnabled(Z)Landroid/app/PictureInPictureParams$Builder;
+                    invoke-virtual {v0, p0}, Landroid/app/PictureInPictureParams${'$'}Builder;->setAutoEnterEnabled(Z)Landroid/app/PictureInPictureParams${'$'}Builder;
                     move-result-object v0
-                    invoke-virtual {v0}, Landroid/app/PictureInPictureParams$Builder;->build()Landroid/app/PictureInPictureParams;
+                    invoke-virtual {v0}, Landroid/app/PictureInPictureParams${'$'}Builder;->build()Landroid/app/PictureInPictureParams;
                     move-result-object v0
                     invoke-virtual {p1, v0}, Landroid/app/Activity;->setPictureInPictureParams(Landroid/app/PictureInPictureParams;)V
                 """.trimIndent()
@@ -123,12 +123,12 @@ val tverPipPatch = bytecodePatch(
                     move-result-object v0
                     if-eqz v0, :finished
                     move-object p0, v0
-                    new-instance v0, Landroid/app/PictureInPictureParams$Builder;
-                    invoke-direct {v0}, Landroid/app/PictureInPictureParams$Builder;-><init>()V
+                    new-instance v0, Landroid/app/PictureInPictureParams${'$'}Builder;
+                    invoke-direct {v0}, Landroid/app/PictureInPictureParams${'$'}Builder;-><init>()V
                     const/4 v1, 0x0
-                    invoke-virtual {v0, v1}, Landroid/app/PictureInPictureParams$Builder;->setAutoEnterEnabled(Z)Landroid/app/PictureInPictureParams$Builder;
+                    invoke-virtual {v0, v1}, Landroid/app/PictureInPictureParams${'$'}Builder;->setAutoEnterEnabled(Z)Landroid/app/PictureInPictureParams${'$'}Builder;
                     move-result-object v0
-                    invoke-virtual {v0}, Landroid/app/PictureInPictureParams$Builder;->build()Landroid/app/PictureInPictureParams;
+                    invoke-virtual {v0}, Landroid/app/PictureInPictureParams${'$'}Builder;->build()Landroid/app/PictureInPictureParams;
                     move-result-object v0
                     invoke-virtual {p0, v0}, Landroid/app/Activity;->setPictureInPictureParams(Landroid/app/PictureInPictureParams;)V
                     invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
