@@ -1,3 +1,9 @@
+## [1.0.0-dev.9](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.8...v1.0.0-dev.9) (2026-10-18)
+
+### 🐛 Bug Fixes
+
+* handle Android system PiP request callback before Home leave fallback ([93644d5](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/93644d596252762b07eba876c1a0d79de0c7d7e4))
+
 ## [1.0.0-dev.8](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.7...v1.0.0-dev.8) (2026-10-18)
 
 ### 🐛 Bug Fixes
