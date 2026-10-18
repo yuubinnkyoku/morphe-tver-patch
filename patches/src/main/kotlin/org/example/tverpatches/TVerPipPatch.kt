@@ -204,13 +204,16 @@ val tverPipPatch = bytecodePatch(
                     check-cast v0, Landroid/media/AudioManager;
                     invoke-virtual {v0}, Landroid/media/AudioManager;->isMusicActive()Z
                     move-result v2
+                    if-eqz v2, :fallback_inactive
                     const-string v0, "TVerPipDebug"
-                    const-string v1, "HOME_AUDIO_FALLBACK: music active = "
-                    invoke-static {v2}, Ljava/lang/String;->valueOf(Z)Ljava/lang/String;
-                    move-result-object v3
-                    invoke-virtual {v1, v3}, Ljava/lang/String;->concat(Ljava/lang/String;)Ljava/lang/String;
-                    move-result-object v1
+                    const-string v1, "HOME_AUDIO_FALLBACK: active"
                     invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                    goto :pip_allowed
+                    :fallback_inactive
+                    const-string v0, "TVerPipDebug"
+                    const-string v1, "HOME_AUDIO_FALLBACK: inactive"
+                    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                    goto :done
                     :pip_allowed
                     if-eqz v2, :done
                     new-instance v2, Landroid/app/PictureInPictureParams${'
