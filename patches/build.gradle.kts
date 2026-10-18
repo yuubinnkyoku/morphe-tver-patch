@@ -1,14 +1,13 @@
-group = "app.template"
+group = "io.github.yuubinnkyoku"
 
 patches {
-    // TODO: Update this section with your project details.
     about {
-        name = "UserXYZ Patches"
-        description = "Patches for apps I like"
-        source = "git@github.com:UserXYZ/morphe-patches.git"
-        author = "Awesome dev"
-        contact = "na"
-        website = "na"
+        name = "yuubinnkyoku TVer patches"
+        description = "Experimental picture-in-picture and ad suppression for TVer 7.2.1"
+        source = "https://github.com/yuubinnkyoku/morphe-tver-patch"
+        author = "yuubinnkyoku"
+        contact = "https://github.com/yuubinnkyoku"
+        website = "https://github.com/yuubinnkyoku/morphe-tver-patch"
         license = "GPLv3"
     }
 }
