@@ -1,3 +1,12 @@
+## [1.0.0-dev.8](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.7...v1.0.0-dev.8) (2026-10-18)
+
+### 🐛 Bug Fixes
+
+* preserve Activity register in Home PiP fallback logging ([2cd87e4](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/2cd87e49b0229b57a63f82873e3702b502617ad0))
+* rebuild Home PiP audio fallback without corrupted duplicate code ([03de4d7](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/03de4d7730f23ed5dc7dd4d713307e06c35d41ea))
+* repair truncated PiP builder descriptor in automatic Home fallback ([cfaf286](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/cfaf286252d935170a584fcfdeb2d98ee0f22a2d))
+* try automatic PiP on Home when media audio is active ([c184c10](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/c184c10ed201b239c839cb36df939c4bd01c0278))
+
 ## [1.0.0-dev.7](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.6...v1.0.0-dev.7) (2026-10-18)
 
 ### 🐛 Bug Fixes

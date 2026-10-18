@@ -30,7 +30,7 @@ Click here to add these patches to Morphe: https://morphe.software/add-source?gi
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.0.0-dev.7](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.0.0-dev.7)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;3 patches total
+> **[v1.0.0-dev.8](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.0.0-dev.8)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;3 patches total
 <details open>
 <summary>📦 XYZ app&nbsp;&nbsp;•&nbsp;&nbsp;1 patch</summary>
 <br>
@@ -57,7 +57,7 @@ Click here to add these patches to Morphe: https://morphe.software/add-source?gi
 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
-| [TVer: Android system PiP (7.2.1)](#tver-android-system-pip-7-2-1) | Try to enter system picture-in-picture from a TVer video screen. |  |
+| [TVer: Android system PiP (7.2.1)](#tver-android-system-pip-7-2-1) | Try system PiP from TVer video screen, with a Home audio playback fallback. |  |
 | [TVer: suppress player ads (7.2.1)](#tver-suppress-player-ads-7-2-1) | Attempt to skip pre-roll ads and disable the player's client-side ad hooks. |  |
 
 </details>
