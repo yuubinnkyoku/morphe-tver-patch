@@ -1,3 +1,12 @@
+## [1.0.0-dev.6](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.5...v1.0.0-dev.6) (2026-10-18)
+
+### 🐛 Bug Fixes
+
+* add on-screen manual PiP diagnostic button and logcat events ([5792f86](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5792f865ddc00f2dad881cf60ccaca8805420f0d))
+* correct Kotlin interpolation syntax in PiP diagnostic overlay ([1114059](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/111405948a6f2b4850de1043c4ce1f6fca3cf6cf))
+* escape Kotlin dollar signs in generated debug PiP smali ([5c4a413](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5c4a413a757ef444d0823b3129e7d2d07bdf27a2))
+* log video fragment lifecycle and Activity leave hints for PiP diagnosis ([7d785a7](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/7d785a7c1201aa231f4ae4000b12e18c4f2aa6c2))
+
 ## [1.0.0-dev.5](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.4...v1.0.0-dev.5) (2026-10-18)
 
 ### 🐛 Bug Fixes
