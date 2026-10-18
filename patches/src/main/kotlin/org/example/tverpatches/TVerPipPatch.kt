@@ -194,7 +194,11 @@ val tverPipPatch = bytecodePatch(
                     invoke-virtual {v0, v1, v2}, Landroid/content/Intent;->getBooleanExtra(Ljava/lang/String;Z)Z
                     move-result v2
                     if-eqz v2, :done
-                    invoke-virtual {p0}, Landroid/app/Activity;->enterPictureInPictureMode()Z
+                    new-instance v2, Landroid/app/PictureInPictureParams${'$'}Builder;
+                    invoke-direct {v2}, Landroid/app/PictureInPictureParams${'$'}Builder;-><init>()V
+                    invoke-virtual {v2}, Landroid/app/PictureInPictureParams${'$'}Builder;->build()Landroid/app/PictureInPictureParams;
+                    move-result-object v2
+                    invoke-virtual {p0, v2}, Landroid/app/Activity;->enterPictureInPictureMode(Landroid/app/PictureInPictureParams;)Z
                     move-result v2
                 """.trimIndent(),
                 ExternalLabel("done", method.getInstruction(0)),
@@ -250,7 +254,11 @@ val tverPipPatch = bytecodePatch(
                     const-string v0, "TVerPipDebug"
                     const-string v1, "BUTTON_CLICK: requesting system PiP"
                     invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
-                    invoke-virtual {p0}, Landroid/app/Activity;->enterPictureInPictureMode()Z
+                    new-instance v2, Landroid/app/PictureInPictureParams${'$'}Builder;
+                    invoke-direct {v2}, Landroid/app/PictureInPictureParams${'$'}Builder;-><init>()V
+                    invoke-virtual {v2}, Landroid/app/PictureInPictureParams${'$'}Builder;->build()Landroid/app/PictureInPictureParams;
+                    move-result-object v2
+                    invoke-virtual {p0, v2}, Landroid/app/Activity;->enterPictureInPictureMode(Landroid/app/PictureInPictureParams;)Z
                     move-result v2
                     const-string v1, "BUTTON_RESULT: enterPictureInPictureMode returned "
                     invoke-static {v2}, Ljava/lang/String;->valueOf(Z)Ljava/lang/String;
