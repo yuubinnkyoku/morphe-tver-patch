@@ -24,6 +24,32 @@ jobs:
         with:
           fetch-depth: 0
 
+      # One-time repair: dev.3 was tagged during a failed release, but never
+      # published. Remove only that exact orphan so semantic-release can retry.
+      - name: Repair orphaned dev.3 prerelease tag
+        if: github.ref_name == 'dev'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/v1.1.0-dev.3" >/dev/null 2>&1; then
+            echo "dev.3 release exists; leaving its tag untouched"
+            exit 0
+          fi
+          existing="$(git ls-remote --tags origin refs/tags/v1.1.0-dev.3 | awk '{print $1}')"
+          if [ -z "$existing" ]; then
+            echo "No orphan tag to repair"
+            exit 0
+          fi
+          if [ "$existing" != "164e2e7d73f3dce4b85da36e1d62992bf7d9c991" ]; then
+            echo "::error::dev.3 tag has changed; refusing to delete it"
+            exit 1
+          fi
+          git push origin :refs/tags/v1.1.0-dev.3
+          git tag -d v1.1.0-dev.3
+          echo "Removed orphaned dev.3 tag only"
+
       - name: Setup Java
         uses: actions/setup-java@v6
         with:
