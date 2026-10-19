@@ -71,9 +71,15 @@ Development takes place on the `dev` branch. CI builds and publishes prerelease 
 
 <!-- PATCHES_END -->
 
-## ⭐ GitHub stars
+## ✨ GitHub Star History
 
-[Star this repository or view its stargazers](https://github.com/yuubinnkyoku/morphe-tver-patch/stargazers)
+<a href="https://www.star-history.com/?repos=yuubinnkyoku%2Fmorphe-tver-patch&type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=yuubinnkyoku/morphe-tver-patch&type=date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=yuubinnkyoku/morphe-tver-patch&type=date" />
+    <img alt="GitHub Star History" src="https://api.star-history.com/chart?repos=yuubinnkyoku/morphe-tver-patch&type=date" />
+  </picture>
+</a>
 
 ## 📜 License
 
