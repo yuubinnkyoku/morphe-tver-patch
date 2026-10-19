@@ -283,6 +283,66 @@ val tverPipPatch = bytecodePatch(
             }
 
 
+            // Match an active EpisodeKey before the video host is created.
+            check(cls.methods.none { it.name == "morpheFindEpisodeNavigation" })
+            cls.methods.add(
+                ImmutableMethod(
+                    activityType,
+                    "morpheFindEpisodeNavigation",
+                    listOf(ImmutableMethodParameter("Landroidx/fragment/app/FragmentManager;", null, null)),
+                    "Z",
+                    AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                    null, null, MutableMethodImplementation(7),
+                ).toMutable().apply {
+                    addInstructions(0, """
+                        if-eqz p0, :not_found
+                        invoke-virtual {p0}, Landroidx/fragment/app/FragmentManager;->getFragments()Ljava/util/List;
+                        move-result-object v0
+                        invoke-interface {v0}, Ljava/util/List;->iterator()Ljava/util/Iterator;
+                        move-result-object v1
+                        :loop
+                        invoke-interface {v1}, Ljava/util/Iterator;->hasNext()Z
+                        move-result v2
+                        if-eqz v2, :not_found
+                        invoke-interface {v1}, Ljava/util/Iterator;->next()Ljava/lang/Object;
+                        move-result-object v2
+                        instance-of v3, v2, Landroidx/fragment/app/Fragment;
+                        if-eqz v3, :loop
+                        check-cast v2, Landroidx/fragment/app/Fragment;
+                        invoke-virtual {v2}, Landroidx/fragment/app/Fragment;->isResumed()Z
+                        move-result v3
+                        if-eqz v3, :loop
+                        instance-of v3, v2, Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/BaseFragment;
+                        if-eqz v3, :children
+                        move-object v3, v2
+                        check-cast v3, Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/BaseFragment;
+                        invoke-virtual {v3}, Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/BaseFragment;->getNav3Controller()Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/nav3/Nav3StackController;
+                        move-result-object v3
+                        if-eqz v3, :children
+                        invoke-virtual {v3}, Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/nav3/Nav3StackController;->topEntry()Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/nav3/Nav3StackController${'$'}Entry;
+                        move-result-object v3
+                        if-eqz v3, :children
+                        invoke-virtual {v3}, Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/nav3/Nav3StackController${'$'}Entry;->getDestinationKey()Landroidx/navigation3/runtime/NavKey;
+                        move-result-object v3
+                        instance-of v3, v3, Ljp/hamitv/hamiand1/tver/core/navigation/EpisodeKey;
+                        if-nez v3, :found
+                        :children
+                        invoke-virtual {v2}, Landroidx/fragment/app/Fragment;->getChildFragmentManager()Landroidx/fragment/app/FragmentManager;
+                        move-result-object v3
+                        invoke-static {v3}, $activityType->morpheFindEpisodeNavigation(Landroidx/fragment/app/FragmentManager;)Z
+                        move-result v3
+                        if-nez v3, :found
+                        goto :loop
+                        :found
+                        const/4 v0, 0x1
+                        return v0
+                        :not_found
+                        const/4 v0, 0x0
+                        return v0
+                    """.trimIndent())
+                }
+            )
+
             // TVer 7.2.1: EpisodePersistentPlayerHostView is used by episode
             // playback (classes12.dex); home auto-previews use HomePreviewArbiter.
             // Unlike tab_layout visibility, checking the actual episode host
@@ -350,6 +410,11 @@ val tverPipPatch = bytecodePatch(
                     addInstructions(
                         0,
                         """
+                            invoke-virtual {p0}, Landroidx/fragment/app/FragmentActivity;->getSupportFragmentManager()Landroidx/fragment/app/FragmentManager;
+                            move-result-object v0
+                            invoke-static {v0}, $activityType->morpheFindEpisodeNavigation(Landroidx/fragment/app/FragmentManager;)Z
+                            move-result v0
+                            if-nez v0, :found
                             invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
                             move-result-object v0
                             if-eqz v0, :not_found
@@ -358,6 +423,9 @@ val tverPipPatch = bytecodePatch(
                             if-eqz v0, :not_found
                             invoke-static {v0}, $activityType->morpheFindReplayView(Landroid/view/View;)Z
                             move-result v0
+                            return v0
+                            :found
+                            const/4 v0, 0x1
                             return v0
                             :not_found
                             const/4 v0, 0x0
@@ -438,7 +506,7 @@ val tverPipPatch = bytecodePatch(
                     invoke-virtual {v3}, Landroid/view/Window;->getDecorView()Landroid/view/View;
                     move-result-object v3
                     if-eqz v3, :done
-                    const-wide/16 v4, 0x1f4
+                    const-wide/16 v4, 0x64
                     invoke-virtual {v3, p0, v4, v5}, Landroid/view/View;->postDelayed(Ljava/lang/Runnable;J)Z
                     :done
                     return-void
