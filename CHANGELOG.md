@@ -1,3 +1,10 @@
+## [1.0.0-dev.16](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.15...v1.0.0-dev.16) (2026-10-19)
+
+### 🐛 Bug Fixes
+
+* import mutable field conversion for PiP phase tracker ([3a8c979](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3a8c97972d9b4d5ff79cecfdda2b1d52138284ed))
+* skip automatic PiP for explicitly paused episode playback ([ccb00c2](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/ccb00c2657211e2a160d91a755b285236c833c51))
+
 ## [1.0.0-dev.15](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.14...v1.0.0-dev.15) (2026-10-19)
 
 ### 🐛 Bug Fixes
