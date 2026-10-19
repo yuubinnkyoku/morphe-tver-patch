@@ -1,3 +1,9 @@
+## [1.0.0-dev.17](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.16...v1.0.0-dev.17) (2026-10-19)
+
+### 🐛 Bug Fixes
+
+* allow PiP as soon as episode navigation begins ([1bf838b](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/1bf838be1e8426df95b5b26aa9fedaf768cfc6ec))
+
 ## [1.0.0-dev.16](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.15...v1.0.0-dev.16) (2026-10-19)
 
 ### 🐛 Bug Fixes
