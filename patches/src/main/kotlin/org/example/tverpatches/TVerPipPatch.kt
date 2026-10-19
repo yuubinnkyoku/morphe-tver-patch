@@ -925,11 +925,35 @@ val tverPipPatch = bytecodePatch(
                     move-result v3
                     invoke-virtual {v0, v3}, Landroid/widget/CompoundButton;->setChecked(Z)V
                     invoke-virtual {v0, p0}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
+                    new-instance v7, Landroid/widget/LinearLayout;
+                    invoke-direct {v7, p0}, Landroid/widget/LinearLayout;-><init>(Landroid/content/Context;)V
+                    const/4 v6, 0x1
+                    invoke-virtual {v7, v6}, Landroid/widget/LinearLayout;->setOrientation(I)V
+                    invoke-virtual {v7, v0}, Landroid/view/ViewGroup;->addView(Landroid/view/View;)V
+                    new-instance v0, Landroid/widget/Switch;
+                    invoke-direct {v0, p0}, Landroid/widget/Switch;-><init>(Landroid/content/Context;)V
+                    const-string v1, "起動アニメーションをスキップ（次回起動から）"
+                    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+                    const/16 v1, 0x28
+                    invoke-virtual {v0, v1, v1, v1, v1}, Landroid/view/View;->setPadding(IIII)V
+                    const-string v1, "skip_startup_animation"
+                    invoke-virtual {v0, v1}, Landroid/view/View;->setTag(Ljava/lang/Object;)V
+                    const-string v1, "morphe.tver.settings"
+                    const/4 v2, 0x0
+                    invoke-virtual {p0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                    move-result-object v1
+                    const-string v2, "skip_startup_animation"
+                    const/4 v3, 0x0
+                    invoke-interface {v1, v2, v3}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                    move-result v3
+                    invoke-virtual {v0, v3}, Landroid/widget/CompoundButton;->setChecked(Z)V
+                    invoke-virtual {v0, p0}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
+                    invoke-virtual {v7, v0}, Landroid/view/ViewGroup;->addView(Landroid/view/View;)V
                     new-instance v4, Landroid/app/AlertDialog${'$'}Builder;
                     invoke-direct {v4, p0}, Landroid/app/AlertDialog${'$'}Builder;-><init>(Landroid/content/Context;)V
                     const-string v5, "Morphe設定"
                     invoke-virtual {v4, v5}, Landroid/app/AlertDialog${'$'}Builder;->setTitle(Ljava/lang/CharSequence;)Landroid/app/AlertDialog${'$'}Builder;
-                    invoke-virtual {v4, v0}, Landroid/app/AlertDialog${'$'}Builder;->setView(Landroid/view/View;)Landroid/app/AlertDialog${'$'}Builder;
+                    invoke-virtual {v4, v7}, Landroid/app/AlertDialog${'$'}Builder;->setView(Landroid/view/View;)Landroid/app/AlertDialog${'$'}Builder;
                     const-string v5, "閉じる"
                     const/4 v6, 0x0
                     invoke-virtual {v4, v5, v6}, Landroid/app/AlertDialog${'$'}Builder;->setPositiveButton(Ljava/lang/CharSequence;Landroid/content/DialogInterface${'$'}OnClickListener;)Landroid/app/AlertDialog${'$'}Builder;
@@ -944,6 +968,18 @@ val tverPipPatch = bytecodePatch(
                     move-result-object v0
                     invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences${'$'}Editor;
                     move-result-object v0
+                    invoke-virtual {p1}, Landroid/view/View;->getTag()Ljava/lang/Object;
+                    move-result-object v1
+                    const-string v2, "skip_startup_animation"
+                    invoke-virtual {v2, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+                    move-result v1
+                    if-eqz v1, :pip_setting
+                    const-string v1, "skip_startup_animation"
+                    invoke-interface {v0, v1, p2}, Landroid/content/SharedPreferences${'$'}Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences${'$'}Editor;
+                    move-result-object v0
+                    invoke-interface {v0}, Landroid/content/SharedPreferences${'$'}Editor;->apply()V
+                    return-void
+                    :pip_setting
                     const-string v1, "pip_test_visible"
                     invoke-interface {v0, v1, p2}, Landroid/content/SharedPreferences${'$'}Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences${'$'}Editor;
                     move-result-object v0
@@ -1086,6 +1122,57 @@ val tverPipPatch = bytecodePatch(
 
         addDiagnosticOverlay("Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;")
         addDiagnosticOverlay("Ljp/hamitv/hamiand1/tver/ui/olympic/activity/OlympicVideoActivity;")
+
+        // TVer 7.2.1: bypass only the app's video splash and its waiting period.
+        // Keep SplashFragment SDK initialization and the Android system splash intact.
+        run {
+            val splashType = "Ljp/hamitv/hamiand1/tver/ui/fragments/splash/SplashVideoPresenter;"
+            val splashCls = mutableClassDefBy(classDefBy(splashType))
+            check(splashCls.methods.none { it.name == "morpheShouldSkipStartupAnimation" })
+            splashCls.methods.add(
+                ImmutableMethod(
+                    splashType, "morpheShouldSkipStartupAnimation", emptyList(), "Z",
+                    AccessFlags.PUBLIC.value, null, null, MutableMethodImplementation(4)
+                ).toMutable().apply {
+                    addInstructions(0, """
+                        iget-object v0, p0, $splashType->host:Landroid/view/ViewGroup;
+                        invoke-virtual {v0}, Landroid/view/ViewGroup;->getContext()Landroid/content/Context;
+                        move-result-object v0
+                        const-string v1, "morphe.tver.settings"
+                        const/4 v2, 0x0
+                        invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                        move-result-object v0
+                        const-string v1, "skip_startup_animation"
+                        invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                        move-result v0
+                        return v0
+                    """.trimIndent())
+                }
+            )
+            val start = splashCls.methods.single {
+                it.name == "start" && it.parameterTypes.isEmpty()
+            }
+            start.addInstructionsWithLabels(0, """
+                invoke-virtual {p0}, $splashType->morpheShouldSkipStartupAnimation()Z
+                move-result v0
+                if-eqz v0, :morphe_original_start
+                return-void
+                :morphe_original_start
+            """.trimIndent())
+            val wait = splashCls.methods.single {
+                it.name == "awaitMinimumDisplay" &&
+                    it.parameterTypes.size == 1 &&
+                    it.parameterTypes[0].toString() == "Lkotlin/jvm/functions/Function0;"
+            }
+            wait.addInstructionsWithLabels(0, """
+                invoke-virtual {p0}, $splashType->morpheShouldSkipStartupAnimation()Z
+                move-result v0
+                if-eqz v0, :morphe_original_wait
+                invoke-interface {p1}, Lkotlin/jvm/functions/Function0;->invoke()Ljava/lang/Object;
+                return-void
+                :morphe_original_wait
+            """.trimIndent())
+        }
 
     }
 }

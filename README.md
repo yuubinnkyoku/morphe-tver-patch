@@ -37,7 +37,7 @@ PiPは`v1.0.0-dev.17`まで、Morphe設定は`v1.0.0-dev.18`までの実機テ�
 ## 今後の予定（未実装）
 
 - [ ] 広告抑制の実機検証・改善
-- [ ] 起動アニメーションのスキップ
+- [x] 起動アニメーションのスキップ（Morphe設定でON/OFF、実機未検証）
 - [ ] ハプティクス
 - [ ] アプリ内ミニプレイヤー
 - [ ] ニコニコ風コメント表示
@@ -75,9 +75,15 @@ PiPは`v1.0.0-dev.17`まで、Morphe設定は`v1.0.0-dev.18`までの実機テ�
 
 *パッチ一覧は自動生成されます。日本語版では表示名・説明を翻訳しています。*
 
-## ⭐ GitHubスター
+## ✨ スター数の推移
 
-[スターを付ける・スターを付けたユーザーを見る](https://github.com/yuubinnkyoku/morphe-tver-patch/stargazers)
+<a href="https://www.star-history.com/?repos=yuubinnkyoku%2Fmorphe-tver-patch&type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=yuubinnkyoku/morphe-tver-patch&type=date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=yuubinnkyoku/morphe-tver-patch&type=date" />
+    <img alt="GitHub Star History" src="https://api.star-history.com/chart?repos=yuubinnkyoku/morphe-tver-patch&type=date" />
+  </picture>
+</a>
 
 ## 📜 ライセンス
 
