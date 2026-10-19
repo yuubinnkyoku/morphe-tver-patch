@@ -15,6 +15,21 @@ Unofficial [Morphe](https://morphe.software/) patches for TVer Android. Not affi
 
 PiP was tested on an Android device through **v1.0.0-dev.17**, and Morphe settings through **v1.0.0-dev.18**. Functionality on other Android devices and TVer video types is not guaranteed. CI success alone does not constitute an on-device test.
 
+## 🕹️ 使い方
+
+[Morphe](https://morphe.software)で使えます。
+
+### Morphe Manager
+
+リンクをタップして、Morphe Manager にパッチソースとしてこのパッチを追加します：
+
+[**➕ Morphe に追加**](https://morphe.software/add-source?github=yuubinnkyoku/morphe-tver-patch)
+
+次に、Tverの.apksを抽出し、パッチを適用します。
+1. Morphe 内で TVer のアプリアイコンをタップします
+2. 抽出した.apksを選択します
+3. パッチ適用が完了するまで待ち、インストールします
+
 ## Installation
 
 1. Add this [Morphe patch source](https://morphe.software/add-source?github=yuubinnkyoku/morphe-tver-patch); enable prereleases.
@@ -83,6 +98,12 @@ Development takes place on the `dev` branch. CI builds and publishes prerelease 
 </details>
 
 <!-- PATCHES_END -->
+
+## ✨ スター数の推移
+
+<p align="center">
+    <img src="https://starchart.cc/yuubinnkyoku/morphe-tver-patch.svg?variant=light" alt="piko" width="640" height="320" />
+</p>
 
 ## 📜 License
 
