@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-19T16:07:45",
-  "description": "## [1.1.0-dev.1](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.1...v1.1.0-dev.1) (2026-10-19)\n\n### ✨ New Features\n\n* optional startup animation skip in Morphe settings; restore star chart ([928bd65](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/928bd65da4bb820fb416d5b699430e18d7fd7162))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.1/patches-1.1.0-dev.1.mpp",
+  "created_at": "2026-10-19T22:24:12",
+  "description": "## [1.1.0-dev.2](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.1...v1.1.0-dev.2) (2026-10-19)\n\n### 🐛 Bug Fixes\n\n* avoid external-label crash in startup animation hooks ([4b39eb0](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/4b39eb0013a456bd151c03862ec07d3f34769dd9))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.2/patches-1.1.0-dev.2.mpp",
   "signature_download_url": "",
-  "version": "1.1.0-dev.1"
+  "version": "1.1.0-dev.2"
 }
