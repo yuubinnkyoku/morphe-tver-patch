@@ -1,3 +1,9 @@
+## [1.0.0-dev.15](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.14...v1.0.0-dev.15) (2026-10-19)
+
+### 🐛 Bug Fixes
+
+* allow episode PiP during buffering before audio starts ([b40d764](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/b40d764879aa34793f2c958182dad6c231d272ff))
+
 ## [1.0.0-dev.14](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.13...v1.0.0-dev.14) (2026-10-19)
 
 ### 🐛 Bug Fixes
