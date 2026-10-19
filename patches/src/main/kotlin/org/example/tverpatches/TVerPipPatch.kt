@@ -301,30 +301,12 @@ val tverPipPatch = bytecodePatch(
                     invoke-virtual {p0}, Landroid/app/Activity;->hasWindowFocus()Z
                     move-result v0
                     if-eqz v0, :done
-                    const-string v0, "audio"
-                    invoke-virtual {p0, v0}, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
-                    move-result-object v0
-                    instance-of v1, v0, Landroid/media/AudioManager;
-                    if-eqz v1, :schedule
-                    check-cast v0, Landroid/media/AudioManager;
-                    invoke-virtual {v0}, Landroid/media/AudioManager;->isMusicActive()Z
+                    # A visible episode host is sufficient even while buffering.
+                    # Home preview sessions lack this host and stay excluded.
+                    invoke-virtual {p0}, $activityType->morpheIsReplayVisible()Z
                     move-result v1
                     invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                     move-result-object v2
-                    if-eqz v2, :compare
-                    const-string v3, "$VIDEO_VISIBLE_EXTRA"
-                    const/4 v4, 0x0
-                    invoke-virtual {v2, v3, v4}, Landroid/content/Intent;->getBooleanExtra(Ljava/lang/String;Z)Z
-                    move-result v4
-                    if-eqz v4, :compare
-                    const/4 v1, 0x1
-                    :compare
-                    # Only actual visible VOD playback can opt into auto PiP.
-                    invoke-virtual {p0}, $activityType->morpheIsReplayVisible()Z
-                    move-result v3
-                    if-nez v3, :replay_found
-                    const/4 v1, 0x0
-                    :replay_found
                     if-eqz v2, :apply
                     const-string v3, "org.example.tverpatches.replay_auto_enter_enabled"
                     const/4 v4, 0x0
@@ -415,12 +397,11 @@ val tverPipPatch = bytecodePatch(
                     ${if (descriptor == "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;") """
                     invoke-virtual {p0}, $descriptor->morpheIsReplayVisible()Z
                     move-result v0
-                    if-nez v0, :leave_check_player
+                    if-nez v0, :pip_allowed
                     const-string v0, "TVerPipDebug"
                     const-string v1, "REPLAY_VIEW_MISSING: block leave-hint PiP"
                     invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
                     goto :done
-                    :leave_check_player
                     """.trimIndent() else ""}
                     invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                     move-result-object v0
@@ -506,7 +487,8 @@ val tverPipPatch = bytecodePatch(
                             ${if (activityType == "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;") """
                             invoke-virtual {p0}, $activityType->morpheIsReplayVisible()Z
                             move-result v0
-                            if-eqz v0, :request_home_blocked
+                            if-nez v0, :request_pip
+                            goto :request_home_blocked
                             """.trimIndent() else ""}
                             invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                             move-result-object v0
