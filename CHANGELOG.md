@@ -1,3 +1,10 @@
+## [1.0.0-dev.12](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.11...v1.0.0-dev.12) (2026-10-19)
+
+### 🐛 Bug Fixes
+
+* escape PiP Builder class name in replay auto-enter polling ([38c672a](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/38c672a49f692da818d0cb96fc21a5bdb5e2eecf))
+* pre-enable automatic PiP while replay audio is active ([8c130c5](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/8c130c5fecaa891df5dc1d07b9489b18911de21c))
+
 ## [1.0.0-dev.11](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.10...v1.0.0-dev.11) (2026-10-18)
 
 ### 🐛 Bug Fixes
