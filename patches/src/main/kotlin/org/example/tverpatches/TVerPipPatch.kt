@@ -234,6 +234,17 @@ val tverPipPatch = bytecodePatch(
                     if-eqz v4, :compare
                     const/4 v1, 0x1
                     :compare
+                    # MainActivity's tab_layout is visible on the home screen
+                    # and GONE during full episode playback (TVer 7.2.1).
+                    const v3, 0x7f0a0585
+                    invoke-virtual {p0, v3}, Landroid/app/Activity;->findViewById(I)Landroid/view/View;
+                    move-result-object v3
+                    if-eqz v3, :check_previous
+                    invoke-virtual {v3}, Landroid/view/View;->getVisibility()I
+                    move-result v3
+                    if-nez v3, :check_previous
+                    const/4 v1, 0x0
+                    :check_previous
                     if-eqz v2, :apply
                     const-string v3, "org.example.tverpatches.replay_auto_enter_enabled"
                     const/4 v4, 0x0
@@ -321,6 +332,18 @@ val tverPipPatch = bytecodePatch(
                     const-string v1, "ON_USER_LEAVE_HINT: received"
                     invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
                     invoke-super {p0}, $parent->onUserLeaveHint()V
+                    const v0, 0x7f0a0585
+                    invoke-virtual {p0, v0}, Landroid/app/Activity;->findViewById(I)Landroid/view/View;
+                    move-result-object v0
+                    if-eqz v0, :leave_check_player
+                    invoke-virtual {v0}, Landroid/view/View;->getVisibility()I
+                    move-result v0
+                    if-nez v0, :leave_check_player
+                    const-string v0, "TVerPipDebug"
+                    const-string v1, "HOME_NAV_VISIBLE: block leave-hint PiP"
+                    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                    goto :done
+                    :leave_check_player
                     invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                     move-result-object v0
                     if-eqz v0, :check_audio
@@ -402,6 +425,14 @@ val tverPipPatch = bytecodePatch(
                             const-string v0, "TVerPipDebug"
                             const-string v1, "ON_PIP_REQUESTED: system callback"
                             invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                            const v0, 0x7f0a0585
+                            invoke-virtual {p0, v0}, Landroid/app/Activity;->findViewById(I)Landroid/view/View;
+                            move-result-object v0
+                            if-eqz v0, :request_check_player
+                            invoke-virtual {v0}, Landroid/view/View;->getVisibility()I
+                            move-result v0
+                            if-eqz v0, :request_home_blocked
+                            :request_check_player
                             invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                             move-result-object v0
                             if-eqz v0, :check_audio
@@ -436,6 +467,12 @@ val tverPipPatch = bytecodePatch(
                             :request_failed
                             const-string v0, "TVerPipDebug"
                             const-string v1, "PIP_REQUEST_RESULT: false; allowing legacy Home fallback"
+                            invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                            const/4 v0, 0x0
+                            return v0
+                            :request_home_blocked
+                            const-string v0, "TVerPipDebug"
+                            const-string v1, "HOME_NAV_VISIBLE: block system PiP"
                             invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
                             const/4 v0, 0x0
                             return v0
