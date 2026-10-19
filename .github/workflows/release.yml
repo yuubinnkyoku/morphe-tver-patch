@@ -1,5 +1,10 @@
 name: Release
 
+# Avoid concurrent semantic-release pushes of git notes and tags.
+concurrency:
+  group: morphe-release-publishing
+  cancel-in-progress: false
+
 on:
   workflow_dispatch:
   push:

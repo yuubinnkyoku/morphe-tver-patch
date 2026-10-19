@@ -1207,6 +1207,9 @@ val tverPipPatch = bytecodePatch(
             grace.addInstructions(0, """
                 sget-boolean v0, $splashType->morpheStartupSkipCached:Z
                 if-eqz v0, :morphe_original_grace
+                const-string p0, "MorpheStartup"
+                const-string v0, "HOME_GRACE_SKIPPED"
+                invoke-static {p0, v0}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
                 const/4 v0, 0x0
                 return v0
                 :morphe_original_grace
