@@ -242,11 +242,11 @@ val tverPipPatch = bytecodePatch(
                     if-eq v1, v4, :schedule
                     invoke-virtual {v2, v3, v1}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Z)Landroid/content/Intent;
                     :apply
-                    new-instance v3, Landroid/app/PictureInPictureParams$Builder;
-                    invoke-direct {v3}, Landroid/app/PictureInPictureParams$Builder;-><init>()V
-                    invoke-virtual {v3, v1}, Landroid/app/PictureInPictureParams$Builder;->setAutoEnterEnabled(Z)Landroid/app/PictureInPictureParams$Builder;
+                    new-instance v3, Landroid/app/PictureInPictureParams${'$'}Builder;
+                    invoke-direct {v3}, Landroid/app/PictureInPictureParams${'$'}Builder;-><init>()V
+                    invoke-virtual {v3, v1}, Landroid/app/PictureInPictureParams${'$'}Builder;->setAutoEnterEnabled(Z)Landroid/app/PictureInPictureParams${'$'}Builder;
                     move-result-object v3
-                    invoke-virtual {v3}, Landroid/app/PictureInPictureParams$Builder;->build()Landroid/app/PictureInPictureParams;
+                    invoke-virtual {v3}, Landroid/app/PictureInPictureParams${'$'}Builder;->build()Landroid/app/PictureInPictureParams;
                     move-result-object v3
                     invoke-virtual {p0, v3}, Landroid/app/Activity;->setPictureInPictureParams(Landroid/app/PictureInPictureParams;)V
                     const-string v0, "TVerPipDebug"
