@@ -1152,25 +1152,36 @@ val tverPipPatch = bytecodePatch(
             val start = splashCls.methods.single {
                 it.name == "start" && it.parameterTypes.isEmpty()
             }
-            start.addInstructionsWithLabels(0, """
+            // Plain addInstructions supports inline labels; external-label overload
+            // throws length=0, index=0 when called without ExternalLabel arguments.
+            check(requireNotNull(start.implementation).instructions.any()) {
+                "SplashVideoPresenter.start has no bytecode"
+            }
+            start.addInstructions(0, """
                 invoke-virtual {p0}, $splashType->morpheShouldSkipStartupAnimation()Z
                 move-result v0
                 if-eqz v0, :morphe_original_start
                 return-void
                 :morphe_original_start
+                nop
             """.trimIndent())
             val wait = splashCls.methods.single {
                 it.name == "awaitMinimumDisplay" &&
                     it.parameterTypes.size == 1 &&
                     it.parameterTypes[0].toString() == "Lkotlin/jvm/functions/Function0;"
             }
-            wait.addInstructionsWithLabels(0, """
+            check(requireNotNull(wait.implementation).instructions.any()) {
+                "SplashVideoPresenter.awaitMinimumDisplay has no bytecode"
+            }
+            wait.addInstructions(0, """
                 invoke-virtual {p0}, $splashType->morpheShouldSkipStartupAnimation()Z
                 move-result v0
                 if-eqz v0, :morphe_original_wait
                 invoke-interface {p1}, Lkotlin/jvm/functions/Function0;->invoke()Ljava/lang/Object;
+                move-result-object v0
                 return-void
                 :morphe_original_wait
+                nop
             """.trimIndent())
         }
 
