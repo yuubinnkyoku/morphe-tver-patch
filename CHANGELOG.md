@@ -1,3 +1,9 @@
+## [1.0.0-dev.18](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.17...v1.0.0-dev.18) (2026-10-19)
+
+### ✨ New Features
+
+* add persistent PiP TEST visibility switch under Morphe settings ([4629ee9](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/4629ee93da507eecc660cd37a451be01ea9123cb))
+
 ## [1.0.0-dev.17](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.16...v1.0.0-dev.17) (2026-10-19)
 
 ### 🐛 Bug Fixes
