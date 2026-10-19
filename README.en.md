@@ -35,7 +35,7 @@ Patch bundles are published on [GitHub Releases](https://github.com/yuubinnkyoku
 ## Roadmap (not implemented)
 
 - [ ] Verify and improve client-side ad suppression (pre-roll and mid-roll).
-- [x] Option to bypass the startup animation (Morphe settings; device testing pending).
+- [x] Fast startup: the Morphe setting skips the startup animation and up to 1 second of extra home landing grace (device testing pending).
 - [ ] Configurable haptic feedback.
 - [ ] In-app miniplayer.
 - [ ] Optional Nico Nico–style timed comments overlay.
