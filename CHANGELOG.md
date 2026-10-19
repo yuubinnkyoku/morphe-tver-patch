@@ -1,3 +1,9 @@
+## [1.0.1-dev.1](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0...v1.0.1-dev.1) (2026-10-19)
+
+### 🐛 Bug Fixes
+
+* remove template patch and repair localized README listings ([29ef3a6](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/29ef3a66a3c56960540df3c35a42e8bce145d823))
+
 ## 1.0.0 (2026-10-19)
 
 ### 🐛 Bug Fixes
