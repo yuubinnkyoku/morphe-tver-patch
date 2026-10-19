@@ -1,31 +1,51 @@
-# TVer 7.2.1 — experimental Morphe patches
+# Morphe TVer patches
 
-Unofficial TVer patches for testing Android picture-in-picture (PiP) and client-side ad suppression. Not affiliated with TVer or Morphe.
+Unofficial [Morphe](https://morphe.software/) patches for TVer Android. Not affiliated with TVer or Morphe.
 
-## ❓ About
+**Supported APK:** `jp.hamitv.hamiand1` — **TVer 7.2.1** (versionCode **535**). Other app versions are not verified.
 
-Targets **`jp.hamitv.hamiand1` version `7.2.1` (versionCode `535`)**.
+## Features and current status
 
-- **TVer: suppress player ads**: attempts to skip pre-roll scheduling and client-side player ad hooks. Some ads may remain or playback may break.
-- **TVer: Android system PiP**: opts video activities in to Android PiP and attempts to enter it when leaving an active video screen. TVer may still pause playback.
+| Feature | Status | Notes |
+| --- | --- | --- |
+| System picture-in-picture (PiP) | **Device-tested** | Automatic PiP on a replay episode, including immediately after opening it and while buffering. |
+| PiP exclusions | **Device-tested** | No automatic PiP for a paused episode or home-screen auto-preview. |
+| Morphe settings | **Device-tested** | `Morphe設定` on TVer's settings screen toggles the `PiP TEST` overlay. The preference survives app restarts. |
+| Client-side player ad suppression | **Experimental** | Attempts to disable pre-roll requests and some ad hooks. Complete ad removal is not established. |
 
-**Status: experimental prerelease.** GitHub Actions compile verification passed, but successful APK patching, installation, ad suppression and background PiP playback have **not** been confirmed on a device.
+PiP was tested on an Android device through **v1.0.0-dev.17**, and Morphe settings through **v1.0.0-dev.18**. Functionality on other Android devices and TVer video types is not guaranteed. CI success alone does not constitute an on-device test.
 
-### Prerelease testing
+## Installation
 
-1. In Morphe, add the [patch source](https://morphe.software/add-source?github=yuubinnkyoku/morphe-tver-patch) and enable prereleases for this source.
-2. Select the original TVer 7.2.1 APK and choose either or both experimental patches.
-3. Verify that the patched app installs, starts, and can play an ordinary video.
-4. For PiP, start video playback and use Home to check whether Android enters its system floating video window.
-5. For ad suppression, check pre-roll and mid-roll separately; neither is guaranteed to be removed.
+1. Add this [Morphe patch source](https://morphe.software/add-source?github=yuubinnkyoku/morphe-tver-patch); enable prereleases.
+2. Select an **original TVer 7.2.1** APK (package `jp.hamitv.hamiand1`, versionCode 535).
+3. Apply the desired patches, install the resulting APK, and check playback and settings.
 
-**Be prepared to restore the original app if patching fails, playback stalls, or the app crashes.**
+Patch bundles are published on [GitHub Releases](https://github.com/yuubinnkyoku/morphe-tver-patch/releases); patched TVer APKs are not distributed here. Keep a way to restore the original app, because patches can cause startup or playback failures. Observe applicable terms and laws.
 
-Development happens on the `dev` branch. The template release workflow publishes `feat:`/`fix:` changes; `chore:` commits only verify compilation.
+## PiP and Morphe settings
 
-### How to use these patches
+- **Replay opened / buffering / playing:** Home gesture enters system PiP.
+- **Replay paused:** Automatic PiP is blocked.
+- **Home auto-playing preview:** Automatic PiP is blocked.
+- **PiP TEST button:** Visible by default; go to **TVer settings → Morphe設定 → PiP TESTボタンを表示** to turn it off. This setting changes only the manual test button, not automatic PiP.
 
-Click here to add these patches to Morphe: https://morphe.software/add-source?github=yuubinnkyoku/morphe-tver-patch
+## Roadmap (not implemented)
+
+- [ ] Verify and improve client-side ad suppression (pre-roll and mid-roll).
+- [ ] Option to bypass the startup animation.
+- [ ] Configurable haptic feedback.
+- [ ] In-app miniplayer.
+- [ ] Optional Nico Nico–style timed comments overlay.
+
+## Developing
+
+Development takes place on the `dev` branch. CI builds and publishes prerelease patch bundles after qualifying commits.
+
+- Build: `./gradlew buildAndroid`
+- Output: `patches/build/libs/patches-*.mpp`
+- Desktop patcher: [Morphe Desktop](https://github.com/MorpheApp/morphe-desktop)
+- Automatically generated release metadata (`patches-list.json`, `patches-bundle.json`) must not be edited manually.
 
 ## 🩹 Patches list
 
@@ -63,15 +83,6 @@ Click here to add these patches to Morphe: https://morphe.software/add-source?gi
 </details>
 
 <!-- PATCHES_END -->
-
-### 🛠️ Building locally
-
-- Run `./gradlew buildAndroid`
-- The built patches .mpp file is found in `patches/build/libs/patches-*.mpp`
-- Patch the mpp file using [Morphe-Desktop](https://github.com/MorpheApp/morphe-desktop)
-  like any other patch bundle.
-
-See the [Morphe documentation](https://github.com/MorpheApp/morphe-documentation) for more information.
 
 ## 📜 License
 
