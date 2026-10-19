@@ -1,3 +1,9 @@
+## [1.0.0-dev.13](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.12...v1.0.0-dev.13) (2026-10-19)
+
+### 🐛 Bug Fixes
+
+* block home preview PiP when main navigation tabs are visible ([2462c11](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/2462c11de0b0f35b2111b31fd20123a9518f110e))
+
 ## [1.0.0-dev.12](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.11...v1.0.0-dev.12) (2026-10-19)
 
 ### 🐛 Bug Fixes
