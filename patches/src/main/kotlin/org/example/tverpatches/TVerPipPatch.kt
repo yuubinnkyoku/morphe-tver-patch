@@ -343,6 +343,78 @@ val tverPipPatch = bytecodePatch(
                 }
             )
 
+            // Identify settings top only, not nested settings pages.
+            check(cls.methods.none { it.name == "morpheFindSettingsNavigation" })
+            cls.methods.add(
+                ImmutableMethod(
+                    activityType,
+                    "morpheFindSettingsNavigation",
+                    listOf(ImmutableMethodParameter("Landroidx/fragment/app/FragmentManager;", null, null)),
+                    "Z",
+                    AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                    null, null, MutableMethodImplementation(7),
+                ).toMutable().apply {
+                    addInstructions(0, """
+                        if-eqz p0, :not_found
+                        invoke-virtual {p0}, Landroidx/fragment/app/FragmentManager;->getFragments()Ljava/util/List;
+                        move-result-object v0
+                        invoke-interface {v0}, Ljava/util/List;->iterator()Ljava/util/Iterator;
+                        move-result-object v1
+                        :loop
+                        invoke-interface {v1}, Ljava/util/Iterator;->hasNext()Z
+                        move-result v2
+                        if-eqz v2, :not_found
+                        invoke-interface {v1}, Ljava/util/Iterator;->next()Ljava/lang/Object;
+                        move-result-object v2
+                        instance-of v3, v2, Landroidx/fragment/app/Fragment;
+                        if-eqz v3, :loop
+                        check-cast v2, Landroidx/fragment/app/Fragment;
+                        invoke-virtual {v2}, Landroidx/fragment/app/Fragment;->isResumed()Z
+                        move-result v3
+                        if-eqz v3, :loop
+                        instance-of v3, v2, Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/BaseFragment;
+                        if-eqz v3, :children
+                        move-object v3, v2
+                        check-cast v3, Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/BaseFragment;
+                        invoke-virtual {v3}, Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/BaseFragment;->getNav3Controller()Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/nav3/Nav3StackController;
+                        move-result-object v3
+                        if-eqz v3, :children
+                        invoke-virtual {v3}, Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/nav3/Nav3StackController;->topEntry()Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/nav3/Nav3StackController${'$'}Entry;
+                        move-result-object v3
+                        if-eqz v3, :children
+                        invoke-virtual {v3}, Ljp/hamitv/hamiand1/tver/core/common/ui/fragment/container/nav3/Nav3StackController${'$'}Entry;->getDestinationKey()Landroidx/navigation3/runtime/NavKey;
+                        move-result-object v3
+                        instance-of v3, v3, Ljp/hamitv/hamiand1/tver/core/navigation/SettingKey;
+                        if-nez v3, :found
+                        :children
+                        invoke-virtual {v2}, Landroidx/fragment/app/Fragment;->getChildFragmentManager()Landroidx/fragment/app/FragmentManager;
+                        move-result-object v3
+                        invoke-static {v3}, $activityType->morpheFindSettingsNavigation(Landroidx/fragment/app/FragmentManager;)Z
+                        move-result v3
+                        if-nez v3, :found
+                        goto :loop
+                        :found
+                        const/4 v0, 0x1
+                        return v0
+                        :not_found
+                        const/4 v0, 0x0
+                        return v0
+                    """.trimIndent())
+                }
+            )
+
+            check(cls.methods.none { it.name == "morpheIsSettingsTop" })
+            cls.methods.add(ImmutableMethod(
+                activityType, "morpheIsSettingsTop", emptyList(), "Z",
+                AccessFlags.PUBLIC.value, null, null, MutableMethodImplementation(2)
+            ).toMutable().apply { addInstructions(0, """
+                invoke-virtual {p0}, Landroidx/fragment/app/FragmentActivity;->getSupportFragmentManager()Landroidx/fragment/app/FragmentManager;
+                move-result-object v0
+                invoke-static {v0}, $activityType->morpheFindSettingsNavigation(Landroidx/fragment/app/FragmentManager;)Z
+                move-result v0
+                return v0
+            """.trimIndent()) })
+
             // TVer 7.2.1: EpisodePersistentPlayerHostView is used by episode
             // playback (classes12.dex); home auto-previews use HomePreviewArbiter.
             // Unlike tab_layout visibility, checking the actual episode host
@@ -458,6 +530,20 @@ val tverPipPatch = bytecodePatch(
                     invoke-virtual {p0}, Landroid/app/Activity;->hasWindowFocus()Z
                     move-result v0
                     if-eqz v0, :done
+                    invoke-virtual {p0}, $activityType->morpheIsSettingsTop()Z
+                    move-result v0
+                    invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
+                    move-result-object v1
+                    if-eqz v1, :show_settings_entry
+                    const-string v2, "morphe.settings.route.enabled"
+                    const/4 v3, 0x0
+                    invoke-virtual {v1, v2, v3}, Landroid/content/Intent;->getBooleanExtra(Ljava/lang/String;Z)Z
+                    move-result v3
+                    if-eq v0, v3, :settings_checked
+                    invoke-virtual {v1, v2, v0}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Z)Landroid/content/Intent;
+                    :show_settings_entry
+                    invoke-virtual {p0, v0}, $activityType->morpheSetSettingsEntryVisible(Z)V
+                    :settings_checked
                     # A visible episode host is sufficient even while buffering.
                     # Home preview sessions lack this host and stay excluded.
                     invoke-virtual {p0}, $activityType->morpheIsReplayVisible()Z
@@ -750,6 +836,11 @@ val tverPipPatch = bytecodePatch(
             val listener = "Landroid/view/View${'$'}OnClickListener;"
             check(listener !in cls.interfaces) { "Activity already implements View.OnClickListener" }
             cls.interfaces.add(listener)
+            if (activityType == "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;") {
+                val callback = "Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;"
+                check(callback !in cls.interfaces)
+                cls.interfaces.add(callback)
+            }
 
             fun addMethod(
                 name: String,
@@ -776,9 +867,107 @@ val tverPipPatch = bytecodePatch(
                 )
             }
 
+
+            if (activityType == "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;") {
+                // In-page entry shown only while the SettingKey destination is active.
+                addMethod("morpheSetSettingsEntryVisible", listOf("Z"), 12, """
+                    const v0, 0x1020002
+                    invoke-virtual {p0, v0}, Landroid/app/Activity;->findViewById(I)Landroid/view/View;
+                    move-result-object v0
+                    if-eqz v0, :done
+                    const-string v1, "morphe.tver.settings.entry"
+                    invoke-virtual {v0, v1}, Landroid/view/View;->findViewWithTag(Ljava/lang/Object;)Landroid/view/View;
+                    move-result-object v2
+                    if-nez v2, :found
+                    if-eqz p1, :done
+                    new-instance v2, Landroid/widget/Button;
+                    invoke-direct {v2, p0}, Landroid/widget/Button;-><init>(Landroid/content/Context;)V
+                    const-string v3, "Morphe設定  ›"
+                    invoke-virtual {v2, v3}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+                    invoke-virtual {v2, v1}, Landroid/view/View;->setTag(Ljava/lang/Object;)V
+                    invoke-virtual {v2, p0}, Landroid/view/View;->setOnClickListener(Landroid/view/View${'$'}OnClickListener;)V
+                    new-instance v4, Landroid/widget/FrameLayout${'$'}LayoutParams;
+                    const/4 v5, -0x1
+                    const/4 v6, -0x2
+                    const/16 v7, 0x50
+                    invoke-direct {v4, v5, v6, v7}, Landroid/widget/FrameLayout${'$'}LayoutParams;-><init>(III)V
+                    const/16 v5, 0x18
+                    const/16 v6, 0x50
+                    invoke-virtual {v4, v5, v5, v5, v6}, Landroid/view/ViewGroup${'$'}MarginLayoutParams;->setMargins(IIII)V
+                    check-cast v0, Landroid/view/ViewGroup;
+                    invoke-virtual {v0, v2, v4}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup${'$'}LayoutParams;)V
+                    :found
+                    if-eqz p1, :hide
+                    const/4 v3, 0x0
+                    goto :set_visibility
+                    :hide
+                    const/16 v3, 0x8
+                    :set_visibility
+                    invoke-virtual {v2, v3}, Landroid/view/View;->setVisibility(I)V
+                    :done
+                    return-void
+                """)
+
+                addMethod("morpheShowSettingsDialog", emptyList(), 9, """
+                    new-instance v0, Landroid/widget/Switch;
+                    invoke-direct {v0, p0}, Landroid/widget/Switch;-><init>(Landroid/content/Context;)V
+                    const-string v1, "PiP TESTボタンを表示"
+                    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+                    const/16 v1, 0x28
+                    invoke-virtual {v0, v1, v1, v1, v1}, Landroid/view/View;->setPadding(IIII)V
+                    const-string v1, "morphe.tver.settings"
+                    const/4 v2, 0x0
+                    invoke-virtual {p0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                    move-result-object v1
+                    const-string v2, "pip_test_visible"
+                    const/4 v3, 0x1
+                    invoke-interface {v1, v2, v3}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                    move-result v3
+                    invoke-virtual {v0, v3}, Landroid/widget/CompoundButton;->setChecked(Z)V
+                    invoke-virtual {v0, p0}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
+                    new-instance v4, Landroid/app/AlertDialog${'$'}Builder;
+                    invoke-direct {v4, p0}, Landroid/app/AlertDialog${'$'}Builder;-><init>(Landroid/content/Context;)V
+                    const-string v5, "Morphe設定"
+                    invoke-virtual {v4, v5}, Landroid/app/AlertDialog${'$'}Builder;->setTitle(Ljava/lang/CharSequence;)Landroid/app/AlertDialog${'$'}Builder;
+                    invoke-virtual {v4, v0}, Landroid/app/AlertDialog${'$'}Builder;->setView(Landroid/view/View;)Landroid/app/AlertDialog${'$'}Builder;
+                    const-string v5, "閉じる"
+                    const/4 v6, 0x0
+                    invoke-virtual {v4, v5, v6}, Landroid/app/AlertDialog${'$'}Builder;->setPositiveButton(Ljava/lang/CharSequence;Landroid/content/DialogInterface${'$'}OnClickListener;)Landroid/app/AlertDialog${'$'}Builder;
+                    invoke-virtual {v4}, Landroid/app/AlertDialog${'$'}Builder;->show()Landroid/app/AlertDialog;
+                    return-void
+                """)
+
+                addMethod("onCheckedChanged", listOf("Landroid/widget/CompoundButton;", "Z"), 6, """
+                    const-string v0, "morphe.tver.settings"
+                    const/4 v1, 0x0
+                    invoke-virtual {p0, v0, v1}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                    move-result-object v0
+                    invoke-interface {v0}, Landroid/content/SharedPreferences;->edit()Landroid/content/SharedPreferences${'$'}Editor;
+                    move-result-object v0
+                    const-string v1, "pip_test_visible"
+                    invoke-interface {v0, v1, p2}, Landroid/content/SharedPreferences${'$'}Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences${'$'}Editor;
+                    move-result-object v0
+                    invoke-interface {v0}, Landroid/content/SharedPreferences${'$'}Editor;->apply()V
+                    const/4 v0, 0x1
+                    invoke-virtual {p0, v0}, $activityType->morpheSetPipDebugVisible(Z)V
+                    return-void
+                """)
+            }
+
             addMethod(
                 "onClick", listOf("Landroid/view/View;"), 6,
                 """
+                    ${if (activityType == "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;") """
+                    invoke-virtual {p1}, Landroid/view/View;->getTag()Ljava/lang/Object;
+                    move-result-object v0
+                    const-string v1, "morphe.tver.settings.entry"
+                    invoke-virtual {v1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+                    move-result v0
+                    if-eqz v0, :pip_test
+                    invoke-virtual {p0}, $activityType->morpheShowSettingsDialog()V
+                    return-void
+                    :pip_test
+                    """.trimIndent() else ""}
                     const-string v0, "TVerPipDebug"
                     const-string v1, "BUTTON_CLICK: requesting system PiP"
                     invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
@@ -801,6 +990,17 @@ val tverPipPatch = bytecodePatch(
             addMethod(
                 "morpheSetPipDebugVisible", listOf("Z"), 12,
                 """
+                    const-string v8, "morphe.tver.settings"
+                    const/4 v9, 0x0
+                    invoke-virtual {p0, v8, v9}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                    move-result-object v8
+                    const-string v9, "pip_test_visible"
+                    const/4 v3, 0x1
+                    invoke-interface {v8, v9, v3}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                    move-result v3
+                    if-nez v3, :enabled
+                    const/4 p1, 0x0
+                    :enabled
                     const v0, 0x1020002
                     invoke-virtual {p0, v0}, Landroid/app/Activity;->findViewById(I)Landroid/view/View;
                     move-result-object v0
