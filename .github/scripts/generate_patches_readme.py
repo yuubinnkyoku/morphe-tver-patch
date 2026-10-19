@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Generates the patches section of README.md from patches-list.json
+Generates the patches section of README.md and README.en.md from patches-list.json
 and injects it between <!-- PATCHES_START --> / <!-- PATCHES_END --> markers.
 
 Spoilers are expanded (open by default) if:
   1. Total patch count <= AUTO_EXPAND_THRESHOLD.
   2. The README marker explicitly says: <!-- PATCHES_START EXPANDED -->
 
-python3 generate_patches_readme.py <owner/repo> <branch> [patches-list.json] [README.md]
+python3 generate_patches_readme.py <owner/repo> <branch> [patches-list.json] [README.md] [ja|en]
 """
 
 import json
@@ -25,6 +25,9 @@ repo_full   = sys.argv[1]
 branch      = sys.argv[2]
 json_path   = Path(sys.argv[3]) if len(sys.argv) > 3 else Path("patches-list.json")
 readme_path = Path(sys.argv[4]) if len(sys.argv) > 4 else Path("README.md")
+lang = sys.argv[5] if len(sys.argv) > 5 else ("ja" if readme_path.name == "README.md" else "en")
+if lang not in ("ja", "en"):
+    raise ValueError(f"Unsupported language: {lang} (expected ja or en)")
 
 
 if "/" not in repo_full:
@@ -77,7 +80,7 @@ def anchor(name):
 def patches_table(patches):
     """Render a sorted markdown table of patches with name, description, and options."""
     rows = [
-        "| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |",
+        "| 💊&nbsp;パッチ | 📜&nbsp;説明 | ⚙️&nbsp;オプション |" if lang == "ja" else "| 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |",
         "|----------|----------------|-----------|",
     ]
     for p in sorted(patches, key=lambda x: x["name"]):
@@ -129,9 +132,10 @@ def spoiler(label, count, targets, tbl, expanded=False):
     """Wrap a patches table in a <details> spoiler with a versions sub-table.
     If expanded=True, the spoiler is open by default (for repos with few patches).
     """
-    noun = "patch" if count == 1 else "patches"
+    noun = "パッチ" if lang == "ja" else ("patch" if count == 1 else "patches")
     vtbl = versions_table(targets)
-    versions_section = f"**🎯 Supported versions:**\n\n{vtbl}\n\n" if vtbl else ""
+    versions_title = "対応バージョン" if lang == "ja" else "Supported versions"
+    versions_section = f"**🎯 {versions_title}:**\n\n{vtbl}\n\n" if vtbl else ""
     tag = "<details open>" if expanded else "<details>"
     return f"""{tag}
 <summary>{label}&nbsp;&nbsp;•&nbsp;&nbsp;{count} {noun}</summary>
@@ -147,7 +151,7 @@ def build_content(expanded=False):
     lines = [
         f"> **[v{ver}](https://github.com/{owner}/{repo}/releases/tag/v{ver})**"
         f"&nbsp;&nbsp;•&nbsp;&nbsp;`{branch}`&nbsp;&nbsp;•&nbsp;&nbsp;"
-        f"{total} patches total"
+        f"{'全' if lang == 'ja' else ''}{total}{'パッチ' if lang == 'ja' else ' patches total'}"
     ]
 
     # One spoiler per app, in the order they appear in the JSON
@@ -160,7 +164,7 @@ def build_content(expanded=False):
     # Universal patches (no specific app)
     if universal:
         uni_patches = list(universal.values())
-        noun = "patch" if len(uni_patches) == 1 else "patches"
+        noun = "パッチ" if lang == "ja" else ("patch" if len(uni_patches) == 1 else "patches")
         tag  = "<details open>" if expanded else "<details>"
         lines.append(f"""{tag}
 <summary>🌐 Universal&nbsp;&nbsp;•&nbsp;&nbsp;{len(uni_patches)} {noun}</summary>
