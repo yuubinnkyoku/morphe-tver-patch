@@ -1,3 +1,9 @@
+## [1.0.0-dev.14](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.13...v1.0.0-dev.14) (2026-10-19)
+
+### 🐛 Bug Fixes
+
+* detect visible episode playback host instead of home preview audio ([70e8361](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/70e8361b06c9c93dcf7498eb2e2e35b0ef1f2117))
+
 ## [1.0.0-dev.13](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0-dev.12...v1.0.0-dev.13) (2026-10-19)
 
 ### 🐛 Bug Fixes
