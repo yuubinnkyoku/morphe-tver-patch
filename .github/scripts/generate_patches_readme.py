@@ -18,7 +18,7 @@ from pathlib import Path
 
 
 if len(sys.argv) < 3:
-    print("Usage: generate_patches_readme.py <owner/repo> <branch> [json] [readme]")
+    print("Usage: generate_patches_readme.py <owner/repo> <branch> [json] [readme] [ja|en]")
     sys.exit(1)
 
 repo_full   = sys.argv[1]
@@ -77,6 +77,20 @@ def anchor(name):
     return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", name.lower())).strip("-")
 
 
+
+# Localized README labels; keep English metadata unchanged for Morphe itself.
+PATCH_TEXT_JA = {
+    "TVer: Android system PiP (7.2.1)": (
+        "TVer: 自動ピクチャーインピクチャー (7.2.1)",
+        "見逃し配信を開いた直後・読み込み中・再生中に自動PiPへ移行。一時停止中やホームのプレビューは除外します。",
+    ),
+    "TVer: suppress player ads (7.2.1)": (
+        "TVer: プレイヤー広告の抑制 (7.2.1)",
+        "一部の広告リクエストや再生処理を抑える実験的なパッチです。広告が完全になくなることは保証しません。",
+    ),
+}
+
+
 def patches_table(patches):
     """Render a sorted markdown table of patches with name, description, and options."""
     rows = [
@@ -85,6 +99,12 @@ def patches_table(patches):
     ]
     for p in sorted(patches, key=lambda x: x["name"]):
         a = anchor(p["name"])
+        name = p["name"]
+        original_description = p.get("description") or ""
+        display_name, description = (
+            PATCH_TEXT_JA.get(name, (name, original_description))
+            if lang == "ja" else (name, original_description)
+        )
         options = p.get("options") or []
         if options:
             # Show only option titles as a bullet list
@@ -92,8 +112,8 @@ def patches_table(patches):
             opts_cell = "<br>".join(f"• {t}" for t in parts)
         else:
             opts_cell = ""
-        desc = (p.get("description") or "").replace("\n", "<br>")
-        rows.append(f"| [{p['name']}](#{a}) | {desc} | {opts_cell} |")
+        desc = description.replace("\n", "<br>")
+        rows.append(f"| [{display_name}](#{a}) | {desc} | {opts_cell} |")
     return "\n".join(rows)
 
 
@@ -157,7 +177,8 @@ def build_content(expanded=False):
     # One spoiler per app, in the order they appear in the JSON
     for pkg, entry in by_pkg.items():
         patches = list(entry["patches"].values())
-        label   = f"{entry['emoji']} {entry['name']}"
+        display_name = "TVer" if pkg == "jp.hamitv.hamiand1" else entry["name"]
+        label   = f"{entry['emoji']} {display_name}"
         lines.append(spoiler(label, len(patches), entry["targets"], patches_table(patches), expanded))
         lines.append("")
 

@@ -54,24 +54,9 @@ PiPは`v1.0.0-dev.17`まで、Morphe設定は`v1.0.0-dev.18`までの実機テ�
 ## 🩹 パッチ一覧
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.0.0](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.0.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;全3パッチ
+> **[v1.0.1-dev.1](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.0.1-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全2パッチ
 <details open>
-<summary>📦 XYZ app&nbsp;&nbsp;•&nbsp;&nbsp;1 patch</summary>
-<br>
-
-**🎯 対応バージョン:**
-
-| 2.0.0 | 1.0.2 |
-| :---: | :---: |
-
-| 💊&nbsp;パッチ | 📜&nbsp;説明 | ⚙️&nbsp;オプション |
-|----------|----------------|-----------|
-| [Example Patch](#example-patch) | Example patch to start with. |  |
-
-</details>
-
-<details open>
-<summary>📦 jp.hamitv.hamiand1&nbsp;&nbsp;•&nbsp;&nbsp;2 パッチ</summary>
+<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;2 パッチ</summary>
 <br>
 
 **🎯 対応バージョン:**
@@ -81,20 +66,18 @@ PiPは`v1.0.0-dev.17`まで、Morphe設定は`v1.0.0-dev.18`までの実機テ�
 
 | 💊&nbsp;パッチ | 📜&nbsp;説明 | ⚙️&nbsp;オプション |
 |----------|----------------|-----------|
-| [TVer: Android system PiP (7.2.1)](#tver-android-system-pip-7-2-1) | Try system PiP from TVer video screen, with a Home audio playback fallback. |  |
-| [TVer: suppress player ads (7.2.1)](#tver-suppress-player-ads-7-2-1) | Attempt to skip pre-roll ads and disable the player's client-side ad hooks. |  |
+| [TVer: 自動ピクチャーインピクチャー (7.2.1)](#tver-android-system-pip-7-2-1) | 見逃し配信を開いた直後・読み込み中・再生中に自動PiPへ移行。一時停止中やホームのプレビューは除外します。 |  |
+| [TVer: プレイヤー広告の抑制 (7.2.1)](#tver-suppress-player-ads-7-2-1) | 一部の広告リクエストや再生処理を抑える実験的なパッチです。広告が完全になくなることは保証しません。 |  |
 
 </details>
 
 <!-- PATCHES_END -->
 
-*パッチ名・説明はメタデータを元に自動生成されるため、一部英語のままです。*
+*パッチ一覧は自動生成されます。日本語版では表示名・説明を翻訳しています。*
 
-## ✨ スター数の推移
+## ⭐ GitHubスター
 
-<p align="center">
-    <img src="https://starchart.cc/yuubinnkyoku/morphe-tver-patch.svg?variant=light" alt="GitHub Starの推移" width="640" height="320" />
-</p>
+[スターを付ける・スターを付けたユーザーを見る](https://github.com/yuubinnkyoku/morphe-tver-patch/stargazers)
 
 ## 📜 ライセンス
 
