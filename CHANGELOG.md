@@ -1,3 +1,9 @@
+## [1.1.0-dev.1](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.1...v1.1.0-dev.1) (2026-10-19)
+
+### ✨ New Features
+
+* optional startup animation skip in Morphe settings; restore star chart ([928bd65](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/928bd65da4bb820fb416d5b699430e18d7fd7162))
+
 ## [1.0.1](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.0...v1.0.1) (2026-10-19)
 
 ### 🐛 Bug Fixes
