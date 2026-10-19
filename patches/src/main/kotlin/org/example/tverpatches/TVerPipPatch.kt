@@ -162,6 +162,141 @@ val tverPipPatch = bytecodePatch(
             markFragment(descriptor, "onDestroyView", false)
         }
 
+        // Regular replay playback is hosted in MainActivity, but the currently
+        // instrumented player fragments may not fire for the active video UI.
+        // Sample while MainActivity has window focus so auto-enter params are
+        // configured *before* the system begins the Home gesture.
+        fun addReplayAutoEnterPolling(activityType: String, parent: String) {
+            val cls = mutableClassDefBy(classDefBy(activityType))
+            val runnable = "Ljava/lang/Runnable;"
+            check(runnable !in cls.interfaces) { "Activity already implements Runnable" }
+            check(cls.methods.none { it.name == "run" && it.parameterTypes.isEmpty() }) {
+                "Activity already defines run()"
+            }
+            cls.interfaces.add(runnable)
+
+            fun addVoidMethod(name: String, params: List<String>, registers: Int, instructions: String) {
+                check(cls.methods.none { it.name == name && it.parameterTypes.size == params.size }) {
+                    "Duplicate replay polling method: $name"
+                }
+                cls.methods.add(
+                    ImmutableMethod(
+                        activityType,
+                        name,
+                        params.map { ImmutableMethodParameter(it, null, null) },
+                        "V",
+                        AccessFlags.PUBLIC.value,
+                        null,
+                        null,
+                        MutableMethodImplementation(registers),
+                    ).toMutable().apply { addInstructions(0, instructions.trimIndent()) }
+                )
+            }
+
+            addVoidMethod(
+                "morphePipWindowFocusChanged", listOf("Z"), 3,
+                """
+                    invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                    move-result-object v0
+                    if-eqz v0, :done
+                    invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
+                    move-result-object v0
+                    if-eqz v0, :done
+                    invoke-virtual {v0, p0}, Landroid/view/View;->removeCallbacks(Ljava/lang/Runnable;)Z
+                    if-eqz p1, :done
+                    invoke-virtual {v0, p0}, Landroid/view/View;->post(Ljava/lang/Runnable;)Z
+                    :done
+                    return-void
+                """,
+            )
+
+            addVoidMethod(
+                "run", emptyList(), 7,
+                """
+                    invoke-virtual {p0}, Landroid/app/Activity;->hasWindowFocus()Z
+                    move-result v0
+                    if-eqz v0, :done
+                    const-string v0, "audio"
+                    invoke-virtual {p0, v0}, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
+                    move-result-object v0
+                    instance-of v1, v0, Landroid/media/AudioManager;
+                    if-eqz v1, :schedule
+                    check-cast v0, Landroid/media/AudioManager;
+                    invoke-virtual {v0}, Landroid/media/AudioManager;->isMusicActive()Z
+                    move-result v1
+                    invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
+                    move-result-object v2
+                    if-eqz v2, :compare
+                    const-string v3, "$VIDEO_VISIBLE_EXTRA"
+                    const/4 v4, 0x0
+                    invoke-virtual {v2, v3, v4}, Landroid/content/Intent;->getBooleanExtra(Ljava/lang/String;Z)Z
+                    move-result v4
+                    if-eqz v4, :compare
+                    const/4 v1, 0x1
+                    :compare
+                    if-eqz v2, :apply
+                    const-string v3, "org.example.tverpatches.replay_auto_enter_enabled"
+                    const/4 v4, 0x0
+                    invoke-virtual {v2, v3, v4}, Landroid/content/Intent;->getBooleanExtra(Ljava/lang/String;Z)Z
+                    move-result v4
+                    if-eq v1, v4, :schedule
+                    invoke-virtual {v2, v3, v1}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Z)Landroid/content/Intent;
+                    :apply
+                    new-instance v3, Landroid/app/PictureInPictureParams$Builder;
+                    invoke-direct {v3}, Landroid/app/PictureInPictureParams$Builder;-><init>()V
+                    invoke-virtual {v3, v1}, Landroid/app/PictureInPictureParams$Builder;->setAutoEnterEnabled(Z)Landroid/app/PictureInPictureParams$Builder;
+                    move-result-object v3
+                    invoke-virtual {v3}, Landroid/app/PictureInPictureParams$Builder;->build()Landroid/app/PictureInPictureParams;
+                    move-result-object v3
+                    invoke-virtual {p0, v3}, Landroid/app/Activity;->setPictureInPictureParams(Landroid/app/PictureInPictureParams;)V
+                    const-string v0, "TVerPipDebug"
+                    if-eqz v1, :auto_off
+                    const-string v2, "REPLAY_AUTO_ENTER: enabled before Home"
+                    goto :log_auto
+                    :auto_off
+                    const-string v2, "REPLAY_AUTO_ENTER: disabled (not playing)"
+                    :log_auto
+                    invoke-static {v0, v2}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                    :schedule
+                    invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                    move-result-object v3
+                    if-eqz v3, :done
+                    invoke-virtual {v3}, Landroid/view/Window;->getDecorView()Landroid/view/View;
+                    move-result-object v3
+                    if-eqz v3, :done
+                    const-wide/16 v4, 0x1f4
+                    invoke-virtual {v3, p0, v4, v5}, Landroid/view/View;->postDelayed(Ljava/lang/Runnable;J)Z
+                    :done
+                    return-void
+                """,
+            )
+
+            val existingFocusMethod = cls.methods.firstOrNull {
+                it.name == "onWindowFocusChanged" &&
+                    it.parameterTypes.size == 1 &&
+                    it.parameterTypes[0].toString() == "Z"
+            }
+            if (existingFocusMethod != null) {
+                existingFocusMethod.addInstructions(
+                    0, "invoke-virtual {p0, p1}, $activityType->morphePipWindowFocusChanged(Z)V"
+                )
+            } else {
+                addVoidMethod(
+                    "onWindowFocusChanged", listOf("Z"), 3,
+                    """
+                        invoke-super {p0, p1}, $parent->onWindowFocusChanged(Z)V
+                        invoke-virtual {p0, p1}, $activityType->morphePipWindowFocusChanged(Z)V
+                        return-void
+                    """,
+                )
+            }
+        }
+
+        addReplayAutoEnterPolling(
+            "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;",
+            "Ljp/hamitv/hamiand1/tver/ui/activities/Hilt_MainActivity;",
+        )
+
         fun addLeaveHook(descriptor: String, parent: String) {
             val cls = mutableClassDefBy(classDefBy(descriptor))
             check(cls.methods.none { it.name == "onUserLeaveHint" }) {
