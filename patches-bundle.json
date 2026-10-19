@@ -1,6 +1,6 @@
 {
-  "created_at": "2026-10-19T23:01:02",
-  "description": "## [1.1.0-dev.3](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.2...v1.1.0-dev.3) (2026-10-19)\n\n### 🐛 Bug Fixes\n\n* eliminate optional 1-second home prefetch grace on fast startup ([1f94c9b](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/1f94c9b479af4fb9c522e673eeb9b7eb5b9d8bb9))",
+  "created_at": "2026-10-19T23:06:26",
+  "description": "## [1.1.0-dev.3](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.2...v1.1.0-dev.3) (2026-10-19)\n\n### 🐛 Bug Fixes\n\n* eliminate optional 1-second home prefetch grace on fast startup ([1f94c9b](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/1f94c9b479af4fb9c522e673eeb9b7eb5b9d8bb9))\n* trace skipped startup grace and serialize release publishing ([9835ace](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/9835acef6bfea6d911afdd3fbde34d09bb8fc343))",
   "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.3/patches-1.1.0-dev.3.mpp",
   "signature_download_url": "",
   "version": "1.1.0-dev.3"
