@@ -1128,6 +1128,15 @@ val tverPipPatch = bytecodePatch(
         run {
             val splashType = "Ljp/hamitv/hamiand1/tver/ui/fragments/splash/SplashVideoPresenter;"
             val splashCls = mutableClassDefBy(classDefBy(splashType))
+            // Process-local setting snapshot for the home handoff.
+            check(splashCls.fields.none { it.name == "morpheStartupSkipCached" })
+            splashCls.fields.add(
+                ImmutableField(
+                    splashType, "morpheStartupSkipCached", "Z",
+                    AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                    null, null, null,
+                ).toMutableField()
+            )
             check(splashCls.methods.none { it.name == "morpheShouldSkipStartupAnimation" })
             splashCls.methods.add(
                 ImmutableMethod(
@@ -1145,6 +1154,7 @@ val tverPipPatch = bytecodePatch(
                         const-string v1, "skip_startup_animation"
                         invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
                         move-result v0
+                        sput-boolean v0, $splashType->morpheStartupSkipCached:Z
                         return v0
                     """.trimIndent())
                 }
@@ -1181,6 +1191,25 @@ val tverPipPatch = bytecodePatch(
                 move-result-object v0
                 return-void
                 :morphe_original_wait
+                nop
+            """.trimIndent())
+
+            // Keep SDK and home prefetch running, but do not hold the handoff
+            // for the extra (up to 1000ms) SplashGrace when skip is enabled.
+            val vmType = "Ljp/hamitv/hamiand1/tver/ui/fragments/splash/SplashViewModel;"
+            val vmCls = mutableClassDefBy(classDefBy(vmType))
+            val grace = vmCls.methods.single {
+                it.name == "appliesHomeLoadGrace" && it.parameterTypes.isEmpty()
+            }
+            check(requireNotNull(grace.implementation).registerCount >= 2) {
+                "SplashViewModel.appliesHomeLoadGrace needs a local register"
+            }
+            grace.addInstructions(0, """
+                sget-boolean v0, $splashType->morpheStartupSkipCached:Z
+                if-eqz v0, :morphe_original_grace
+                const/4 v0, 0x0
+                return v0
+                :morphe_original_grace
                 nop
             """.trimIndent())
         }
