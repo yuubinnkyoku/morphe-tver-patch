@@ -1,3 +1,9 @@
+## [1.1.0-dev.3](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.2...v1.1.0-dev.3) (2026-10-19)
+
+### 🐛 Bug Fixes
+
+* eliminate optional 1-second home prefetch grace on fast startup ([1f94c9b](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/1f94c9b479af4fb9c522e673eeb9b7eb5b9d8bb9))
+
 ## [1.1.0-dev.2](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.1...v1.1.0-dev.2) (2026-10-19)
 
 ### 🐛 Bug Fixes
