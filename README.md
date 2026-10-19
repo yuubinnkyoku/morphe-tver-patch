@@ -8,7 +8,7 @@
 
 リンクをタップして、Morphe Manager にパッチソースとしてこのパッチを追加します：
 
-[**➕ Morphe に追加**](https://morphe.software/add-source?github=yuubinnkyoku/)
+[**➕ Morphe に追加**](https://morphe.software/add-source?github=yuubinnkyoku/morphe-tver-patch)
 
 次に、Tverの.apksを抽出し、パッチを適用します。
 1. Morphe 内で TVer のアプリアイコンをタップします
@@ -19,9 +19,9 @@
 ## ⚙️ パッチ詳細
 
 <!-- PATCHES_START -->
-> **[v3.10.0](https://github.com/crimera/piko/releases/tag/v3.10.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;合計137パッチ
+> **[v..](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v..)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;合計パッチ
 <details>
-<summary>📦 Twitter&nbsp;&nbsp;•&nbsp;&nbsp;75パッチ</summary>
+<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;パッチ</summary>
 <br>
 
 **🎯 サポートされているバージョン:**
@@ -43,7 +43,7 @@
 ## ✨ スター数の推移
 
 <p align="center">
-    <img src="https://starchart.cc/yuubinnkyoku/piko.svg?variant=light" alt="piko" width="640" height="320" />
+    <img src="https://starchart.cc/yuubinnkyoku/morphe-tver-patch.svg?variant=light" alt="piko" width="640" height="320" />
 </p>
 
 ## ライセンス
