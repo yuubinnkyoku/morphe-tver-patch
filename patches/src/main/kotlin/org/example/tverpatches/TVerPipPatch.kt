@@ -166,6 +166,93 @@ val tverPipPatch = bytecodePatch(
         // instrumented player fragments may not fire for the active video UI.
         // Sample while MainActivity has window focus so auto-enter params are
         // configured *before* the system begins the Home gesture.
+
+        // A weak handle to the episode coordinator lets the existing MainActivity
+        // polling distinguish manual PAUSED from initial BUFFERING. Do not cache
+        // the controller or hold the retained ViewModel strongly.
+        run {
+            val coordinatorType = "Ljp/hamitv/hamiand1/feature/episode/playback/EpisodePlaybackCoordinator;"
+            val coordinatorCls = mutableClassDefBy(classDefBy(coordinatorType))
+            val weakRefType = "Ljava/lang/ref/WeakReference;"
+            check(coordinatorCls.fields.none { it.name == "morphePipCoordinator" })
+            coordinatorCls.fields.add(
+                ImmutableField(
+                    coordinatorType,
+                    "morphePipCoordinator",
+                    weakRefType,
+                    AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
+                    null, null, null
+                ).toMutable()
+            )
+
+            fun staticMethod(name: String, params: List<String>, registers: Int, instructions: String) {
+                check(coordinatorCls.methods.none { it.name == name })
+                coordinatorCls.methods.add(
+                    ImmutableMethod(
+                        coordinatorType, name,
+                        params.map { ImmutableMethodParameter(it, null, null) },
+                        if (name == "morpheIsEpisodePaused") "Z" else "V",
+                        AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                        null, null, MutableMethodImplementation(registers)
+                    ).toMutable().apply { addInstructions(0, instructions.trimIndent()) }
+                )
+            }
+
+            staticMethod("morpheRegisterPipCoordinator", listOf(coordinatorType), 3,
+                """
+                    new-instance v0, Ljava/lang/ref/WeakReference;
+                    invoke-direct {v0, p0}, Ljava/lang/ref/WeakReference;-><init>(Ljava/lang/Object;)V
+                    sput-object v0, $coordinatorType->morphePipCoordinator:Ljava/lang/ref/WeakReference;
+                    return-void
+                """
+            )
+            staticMethod("morpheIsEpisodePaused", emptyList(), 3,
+                """
+                    sget-object v0, $coordinatorType->morphePipCoordinator:Ljava/lang/ref/WeakReference;
+                    if-eqz v0, :not_paused
+                    invoke-virtual {v0}, Ljava/lang/ref/WeakReference;->get()Ljava/lang/Object;
+                    move-result-object v0
+                    instance-of v1, v0, $coordinatorType
+                    if-eqz v1, :not_paused
+                    check-cast v0, $coordinatorType
+                    invoke-virtual {v0}, $coordinatorType->getActiveController()Lkotlinx/coroutines/flow/StateFlow;
+                    move-result-object v0
+                    if-eqz v0, :not_paused
+                    invoke-interface {v0}, Lkotlinx/coroutines/flow/StateFlow;->getValue()Ljava/lang/Object;
+                    move-result-object v0
+                    instance-of v1, v0, Ljp/play/tverplayer/player/contract/PlayerController;
+                    if-eqz v1, :not_paused
+                    check-cast v0, Ljp/play/tverplayer/player/contract/PlayerController;
+                    invoke-interface {v0}, Ljp/play/tverplayer/player/contract/PlayerController;->getState()Lkotlinx/coroutines/flow/StateFlow;
+                    move-result-object v0
+                    if-eqz v0, :not_paused
+                    invoke-interface {v0}, Lkotlinx/coroutines/flow/StateFlow;->getValue()Ljava/lang/Object;
+                    move-result-object v0
+                    instance-of v1, v0, Ljp/play/tverplayer/player/contract/PlaybackState;
+                    if-eqz v1, :not_paused
+                    check-cast v0, Ljp/play/tverplayer/player/contract/PlaybackState;
+                    invoke-virtual {v0}, Ljp/play/tverplayer/player/contract/PlaybackState;->getPhase()Ljp/play/tverplayer/player/contract/PlaybackPhase;
+                    move-result-object v0
+                    sget-object v1, Ljp/play/tverplayer/player/contract/PlaybackPhase;->PAUSED:Ljp/play/tverplayer/player/contract/PlaybackPhase;
+                    if-ne v0, v1, :not_paused
+                    const/4 v0, 0x1
+                    return v0
+                    :not_paused
+                    const/4 v0, 0x0
+                    return v0
+                """
+            )
+            val ctor = coordinatorCls.methods.single { it.name == "<init>" }
+            val returns = requireNotNull(ctor.implementation).instructions.toList().indices.filter {
+                ctor.getInstruction(it).opcode == Opcode.RETURN_VOID
+            }
+            check(returns.size == 1) { "Unexpected EpisodePlaybackCoordinator constructor returns: ${returns.size}" }
+            ctor.addInstructions(
+                returns.single(),
+                "invoke-static/range {p0 .. p0}, $coordinatorType->morpheRegisterPipCoordinator($coordinatorType)V"
+            )
+        }
+
         fun addReplayAutoEnterPolling(activityType: String, parent: String) {
             val cls = mutableClassDefBy(classDefBy(activityType))
             val runnable = "Ljava/lang/Runnable;"
@@ -305,6 +392,18 @@ val tverPipPatch = bytecodePatch(
                     # Home preview sessions lack this host and stay excluded.
                     invoke-virtual {p0}, $activityType->morpheIsReplayVisible()Z
                     move-result v1
+                    if-eqz v1, :episode_state_ready
+                    invoke-static {}, Ljp/hamitv/hamiand1/feature/episode/playback/EpisodePlaybackCoordinator;->morpheIsEpisodePaused()Z
+                    move-result v1
+                    if-eqz v1, :episode_can_pip
+                    const-string v0, "TVerPipDebug"
+                    const-string v3, "REPLAY_PAUSED: disabling automatic PiP"
+                    invoke-static {v0, v3}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                    const/4 v1, 0x0
+                    goto :episode_state_ready
+                    :episode_can_pip
+                    const/4 v1, 0x1
+                    :episode_state_ready
                     invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                     move-result-object v2
                     if-eqz v2, :apply
@@ -397,7 +496,17 @@ val tverPipPatch = bytecodePatch(
                     ${if (descriptor == "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;") """
                     invoke-virtual {p0}, $descriptor->morpheIsReplayVisible()Z
                     move-result v0
-                    if-nez v0, :pip_allowed
+                    if-eqz v0, :not_a_replay
+                    invoke-static {}, Ljp/hamitv/hamiand1/feature/episode/playback/EpisodePlaybackCoordinator;->morpheIsEpisodePaused()Z
+                    move-result v0
+                    if-nez v0, :paused_leave
+                    goto :pip_allowed
+                    :paused_leave
+                    const-string v0, "TVerPipDebug"
+                    const-string v1, "REPLAY_PAUSED: block leave-hint PiP"
+                    invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                    goto :done
+                    :not_a_replay
                     const-string v0, "TVerPipDebug"
                     const-string v1, "REPLAY_VIEW_MISSING: block leave-hint PiP"
                     invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
@@ -487,8 +596,17 @@ val tverPipPatch = bytecodePatch(
                             ${if (activityType == "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;") """
                             invoke-virtual {p0}, $activityType->morpheIsReplayVisible()Z
                             move-result v0
-                            if-nez v0, :request_pip
-                            goto :request_home_blocked
+                            if-eqz v0, :request_home_blocked
+                            invoke-static {}, Ljp/hamitv/hamiand1/feature/episode/playback/EpisodePlaybackCoordinator;->morpheIsEpisodePaused()Z
+                            move-result v0
+                            if-nez v0, :request_paused_blocked
+                            goto :request_pip
+                            :request_paused_blocked
+                            const-string v0, "TVerPipDebug"
+                            const-string v1, "REPLAY_PAUSED: block system PiP"
+                            invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                            const/4 v0, 0x0
+                            return v0
                             """.trimIndent() else ""}
                             invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                             move-result-object v0
