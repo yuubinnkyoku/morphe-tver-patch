@@ -10,7 +10,7 @@ import app.morphe.patcher.patch.bytecodePatch
 @Suppress("unused")
 val tverAdsPatch = bytecodePatch(
     name = "TVer: suppress player ads (7.2.1)",
-    description = "Attempt to skip pre-roll ads and disable the player's client-side ad hooks.",
+    description = "Experimentally suppress selected player ad requests and hooks; full ad blocking is not guaranteed.",
     default = true,
 ) {
     compatibleWith("jp.hamitv.hamiand1"("7.2.1"))

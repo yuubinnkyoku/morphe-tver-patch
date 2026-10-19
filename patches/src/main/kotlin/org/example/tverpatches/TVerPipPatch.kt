@@ -68,7 +68,7 @@ val tverPipManifestPatch = resourcePatch {
 @Suppress("unused")
 val tverPipPatch = bytecodePatch(
     name = "TVer: Android system PiP (7.2.1)",
-    description = "Try system PiP from TVer video screen, with a Home audio playback fallback.",
+    description = "Automatically enter system PiP for replay episodes; excludes paused episodes and home previews.",
     default = true,
 ) {
     compatibleWith("jp.hamitv.hamiand1"("7.2.1"))
