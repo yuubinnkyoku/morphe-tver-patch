@@ -1633,7 +1633,7 @@ val tverPipPatch = bytecodePatch(
                     new-instance v1, Landroid/widget/TextView;
                     invoke-direct {v1, v0}, Landroid/widget/TextView;-><init>(Landroid/content/Context;)V
                     invoke-virtual {v1, p1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
-                    int-to-f v2, p2
+                    int-to-float v2, p2
                     invoke-virtual {v1, v2}, Landroid/widget/TextView;->setTextSize(F)V
                     const v2, -0x1000000
                     invoke-virtual {v1, v2}, Landroid/widget/TextView;->setTextColor(I)V
