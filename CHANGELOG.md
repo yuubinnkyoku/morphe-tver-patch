@@ -1,3 +1,9 @@
+## [1.1.0-dev.11](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.10...v1.1.0-dev.11) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* correct Smali int-to-float and reserve locals apart from parameter registers ([0fdef80](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/0fdef8059d34e6463ab1b8e8875e39788353a817))
+
 ## [1.1.0-dev.10](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.9...v1.1.0-dev.10) (2026-10-20)
 
 ### 🐛 Bug Fixes
