@@ -1,3 +1,9 @@
+## [1.1.0-dev.13](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.12...v1.1.0-dev.13) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* invoke private early-home helper with invoke-direct (ART VerifyError) ([c98cfac](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/c98cfac3d9c5749a5a10c3e779e099aa38a9830d))
+
 ## [1.1.0-dev.12](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.11...v1.1.0-dev.12) (2026-10-20)
 
 ### 🐛 Bug Fixes
