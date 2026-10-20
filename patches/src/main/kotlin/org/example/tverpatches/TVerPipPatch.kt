@@ -1907,7 +1907,7 @@ val tverPipPatch = bytecodePatch(
                     "V", AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
                     null, null, MutableMethodImplementation(3),
                 ).toMutable().apply { addInstructions(0, """
-                    invoke-interface {p0}, Lokhttp3/Interceptor${'
+                    invoke-interface {p0}, $userInitTransportChainType->request()Lokhttp3/Request;
                     move-result-object v0
                     invoke-virtual {v0}, Lokhttp3/Request;->url()Lokhttp3/HttpUrl;
                     move-result-object v0
