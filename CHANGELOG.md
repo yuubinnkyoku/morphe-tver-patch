@@ -1,3 +1,10 @@
+## [1.1.0-dev.6](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.5...v1.1.0-dev.6) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* avoid verifier conflict in startup grace trace using zero-argument helper ([f3adc58](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/f3adc5845d7b6637b1e9df0301b4de4e71472aa3))
+* preserve target registers in startup milestone hooks ([42e3e85](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/42e3e857a9dfd990ee4b61ca4b8dc7fd95faec9e))
+
 ## [1.1.0-dev.5](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.4...v1.1.0-dev.5) (2026-10-20)
 
 ### ✨ New Features
