@@ -1710,11 +1710,12 @@ val tverPipPatch = bytecodePatch(
                 startingEvent: String,
                 resumedEvent: String,
             ) {
-                check(vmCls.methods.none { it.name == helperName })
-                vmCls.methods.add(ImmutableMethod(
-                    vmType, helperName,
+                val lambdaCls = mutableClassDefBy(classDefBy(lambdaType))
+                check(lambdaCls.methods.none { it.name == helperName })
+                lambdaCls.methods.add(ImmutableMethod(
+                    lambdaType, helperName,
                     listOf(ImmutableMethodParameter(lambdaType, null, null)),
-                    "V", AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                    "V", AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
                     null, null, MutableMethodImplementation(3),
                 ).toMutable().apply { addInstructions(0, """
                     iget v0, p0, $lambdaType->label:I
@@ -1727,12 +1728,11 @@ val tverPipPatch = bytecodePatch(
                     invoke-static {v1}, $vmType->morpheLogStartup(Ljava/lang/String;)V
                     return-void
                 """.trimIndent()) })
-                val lambdaCls = mutableClassDefBy(classDefBy(lambdaType))
                 val invokeSuspend = lambdaCls.methods.single {
                     it.name == "invokeSuspend" && it.parameterTypes.size == 1
                 }
                 invokeSuspend.addInstructions(
-                    0, "invoke-static {p0}, $vmType->$helperName($lambdaType)V"
+                    0, "invoke-static {p0}, $lambdaType->$helperName($lambdaType)V"
                 )
             }
             installSuspendPhaseProbe(
