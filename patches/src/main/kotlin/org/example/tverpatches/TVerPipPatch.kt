@@ -1615,7 +1615,7 @@ val tverPipPatch = bytecodePatch(
                     invoke-virtual {v0}, Landroid/content/res/Resources;->getDisplayMetrics()Landroid/util/DisplayMetrics;
                     move-result-object v0
                     iget v0, v0, Landroid/util/DisplayMetrics;->density:F
-                    int-to-f v1, p1
+                    int-to-float v1, p1
                     mul-float/2addr v1, v0
                     const/high16 v2, 0x3f000000
                     add-float/2addr v1, v2
@@ -1626,7 +1626,7 @@ val tverPipPatch = bytecodePatch(
             addEarlyHomeMethod(
                 "morpheEarlyHomeLabel",
                 listOf("Landroid/widget/LinearLayout;", "Ljava/lang/String;", "I"), "V",
-                AccessFlags.PRIVATE.value or AccessFlags.STATIC.value, 9,
+                AccessFlags.PRIVATE.value or AccessFlags.STATIC.value, 10,
                 """
                     invoke-virtual {p0}, Landroid/view/View;->getContext()Landroid/content/Context;
                     move-result-object v0
@@ -1653,7 +1653,7 @@ val tverPipPatch = bytecodePatch(
             addEarlyHomeMethod(
                 "morpheEarlyHomeSkeletonRow",
                 listOf("Landroid/widget/LinearLayout;", "I", "I"), "V",
-                AccessFlags.PRIVATE.value or AccessFlags.STATIC.value, 11,
+                AccessFlags.PRIVATE.value or AccessFlags.STATIC.value, 13,
                 """
                     invoke-virtual {p0}, Landroid/view/View;->getContext()Landroid/content/Context;
                     move-result-object v0
@@ -1692,7 +1692,7 @@ val tverPipPatch = bytecodePatch(
             )
             addEarlyHomeMethod(
                 "morpheEarlyHomeShow", emptyList(), "V",
-                AccessFlags.PRIVATE.value, 10,
+                AccessFlags.PRIVATE.value, 11,
                 """
                     sget-boolean v0, Ljp/hamitv/hamiand1/tver/ui/fragments/splash/SplashVideoPresenter;->morpheStartupSkipCached:Z
                     if-eqz v0, :early_done
