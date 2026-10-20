@@ -1,3 +1,9 @@
+## [1.1.0-dev.7](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.6...v1.1.0-dev.7) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* preserve branch targets in splash grace method ([13b3864](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/13b3864f8917cef4895b9392ead9d1ddd5aa8934))
+
 ## [1.1.0-dev.6](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.5...v1.1.0-dev.6) (2026-10-20)
 
 ### 🐛 Bug Fixes
