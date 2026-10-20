@@ -1,3 +1,9 @@
+## [1.1.0-dev.9](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.8...v1.1.0-dev.9) (2026-10-20)
+
+### ✨ New Features
+
+* time remote config gate and first home frame commit ([c58dfb4](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/c58dfb4a12e9883fafe6f0b160ff562686121c75))
+
 ## [1.1.0-dev.8](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.7...v1.1.0-dev.8) (2026-10-20)
 
 ### ✨ New Features
