@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-20T14:00:47",
-  "description": "## [1.1.0-dev.22](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.21...v1.1.0-dev.22) (2026-10-20)\n\n### ✨ New Features\n\n* trace SDK browser profile creation request behind slow startup ([1913ab3](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/1913ab346413b72877fd35ca7d0e35d8fe08243f))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.22/patches-1.1.0-dev.22.mpp",
+  "created_at": "2026-10-20T14:35:24",
+  "description": "## [1.1.0-dev.23](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.22...v1.1.0-dev.23) (2026-10-20)\n\n### ✨ New Features\n\n* trace second SDK CDN setting.json request behind cold startup delays ([3dd1efc](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3dd1efcae4c3793504f6bfbedbd15de9bdaf6036))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.23/patches-1.1.0-dev.23.mpp",
   "signature_download_url": "",
-  "version": "1.1.0-dev.22"
+  "version": "1.1.0-dev.23"
 }

@@ -1,3 +1,9 @@
+## [1.1.0-dev.23](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.22...v1.1.0-dev.23) (2026-10-20)
+
+### ✨ New Features
+
+* trace second SDK CDN setting.json request behind cold startup delays ([3dd1efc](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3dd1efcae4c3793504f6bfbedbd15de9bdaf6036))
+
 ## [1.1.0-dev.22](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.21...v1.1.0-dev.22) (2026-10-20)
 
 ### ✨ New Features
