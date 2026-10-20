@@ -1693,6 +1693,64 @@ val tverPipPatch = bytecodePatch(
             traceEntry(cdnPresenterType, "getStartConfigUrlData", "CDN_CONFIG_REQUEST_START")
             traceEntry(sdkPresenterType, "getInitResponse", "SDK_INIT_REQUEST_START")
             traceEntry(sdkUpdateListenerType, "onUpdate", "SDK_PROFILE_CALLBACK_BEGIN")
+            // Network/suspension diagnostics: no behavior changes, no request
+            // payloads, credentials, or result values are logged.
+            // UserInitRepositoryImpl dispatches getUserInit() to Dispatchers.IO.
+            // The worker SuspendLambda has label == 0 on initial invocation and
+            // label == 1 when the suspended HTTP request resumes.
+            val userInitRepositoryType =
+                "Ljp/hamitv/hamiand1/feature/home/repository/impl/UserInitRepositoryImpl;"
+            val userInitWorkerType = userInitRepositoryType.dropLast(1) +
+                "$" + "getUserInit" + "$" + "2;"
+            val transitionAwaitType = fragmentType.dropLast(1) +
+                "$" + "transitionToHome" + "$" + "1;"
+            fun installSuspendPhaseProbe(
+                lambdaType: String,
+                helperName: String,
+                startingEvent: String,
+                resumedEvent: String,
+            ) {
+                check(vmCls.methods.none { it.name == helperName })
+                vmCls.methods.add(ImmutableMethod(
+                    vmType, helperName,
+                    listOf(ImmutableMethodParameter(lambdaType, null, null)),
+                    "V", AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                    null, null, MutableMethodImplementation(3),
+                ).toMutable().apply { addInstructions(0, """
+                    iget v0, p0, $lambdaType->label:I
+                    if-nez v0, :resumed_phase
+                    const-string v1, "$startingEvent"
+                    invoke-static {v1}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                    return-void
+                    :resumed_phase
+                    const-string v1, "$resumedEvent"
+                    invoke-static {v1}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                    return-void
+                """.trimIndent()) })
+                val lambdaCls = mutableClassDefBy(classDefBy(lambdaType))
+                val invokeSuspend = lambdaCls.methods.single {
+                    it.name == "invokeSuspend" && it.parameterTypes.size == 1
+                }
+                invokeSuspend.addInstructions(
+                    0, "invoke-static {p0}, $vmType->$helperName($lambdaType)V"
+                )
+            }
+            installSuspendPhaseProbe(
+                userInitWorkerType, "morpheTraceUserInitCoroutine",
+                "USER_INIT_API_COROUTINE_STARTED",
+                "USER_INIT_API_COROUTINE_RESUMED",
+            )
+            installSuspendPhaseProbe(
+                transitionAwaitType, "morpheTraceHomeWaitCoroutine",
+                "HOME_SDK_COMPLETION_WAIT_STARTED",
+                "HOME_SDK_COMPLETION_WAIT_RESUMED",
+            )
+            traceEntry(userInitRepositoryType, "getUserInit-IoAF18A", "USER_INIT_REPOSITORY_STARTED")
+            traceEntry(fragmentType, "afterSplashVideo", "HOME_AFTER_SPLASH_WAIT_ENTER")
+            traceEntry(fragmentType, "armHandOverFallback", "HOME_HANDOVER_FALLBACK_ARMED")
+            traceEntry(fragmentType, "transitionByBootCompleted", "HOME_DESTINATION_DECISION_STARTED")
+            traceEntry(fragmentType, "toHome", "HOME_TO_HOME_ENTER")
+
             traceEntry(vmType, "callUserInit", "USER_INIT_CALL")
             traceEntry(vmType, "onSessionReady", "SESSION_READY_SIGNAL")
             traceEntry(vmType, "onPrivacyPolicyGatePassed", "PRIVACY_GATE_PASSED")
