@@ -1939,6 +1939,81 @@ val tverPipPatch = bytecodePatch(
                 )
 
 
+            // OkHttp 4.11 EventListener default (NONE) methods have Call
+            // parameters. Instrument their ENTRY without changing request,
+            // response, socket selection, retries, exceptions, or threading.
+            // Filter by the user/init encodedPath; never log actual URL, host,
+            // IP addresses, body, headers, account identifiers or tokens.
+            //
+            // Pair with the ConnectInterceptor / CallServerInterceptor probes:
+            // DNS_START..END, TCP_START..END/FAILED, TLS_START..END
+            // (and connection reuse via CONNECTION_ACQUIRED).
+            val eventListenerType = "Lokhttp3/EventListener;"
+            val eventListenerCls = mutableClassDefBy(classDefBy(eventListenerType))
+            val eventProbeSignatures = listOf(
+                Triple("proxySelectStart", listOf("Lokhttp3/Call;", "Lokhttp3/HttpUrl;"),
+                    "USER_INIT_PROXY_SELECT_START"),
+                Triple("proxySelectEnd", listOf("Lokhttp3/Call;", "Lokhttp3/HttpUrl;", "Ljava/util/List;"),
+                    "USER_INIT_PROXY_SELECT_END"),
+                Triple("dnsStart", listOf("Lokhttp3/Call;", "Ljava/lang/String;"),
+                    "USER_INIT_DNS_START"),
+                Triple("dnsEnd", listOf("Lokhttp3/Call;", "Ljava/lang/String;", "Ljava/util/List;"),
+                    "USER_INIT_DNS_END"),
+                Triple("connectStart", listOf("Lokhttp3/Call;", "Ljava/net/InetSocketAddress;", "Ljava/net/Proxy;"),
+                    "USER_INIT_TCP_START"),
+                Triple("connectEnd", listOf("Lokhttp3/Call;", "Ljava/net/InetSocketAddress;", "Ljava/net/Proxy;", "Lokhttp3/Protocol;"),
+                    "USER_INIT_TCP_END"),
+                Triple("connectFailed", listOf("Lokhttp3/Call;", "Ljava/net/InetSocketAddress;", "Ljava/net/Proxy;", "Lokhttp3/Protocol;", "Ljava/io/IOException;"),
+                    "USER_INIT_TCP_FAILED"),
+                Triple("secureConnectStart", listOf("Lokhttp3/Call;"),
+                    "USER_INIT_TLS_START"),
+                Triple("secureConnectEnd", listOf("Lokhttp3/Call;", "Lokhttp3/Handshake;"),
+                    "USER_INIT_TLS_END"),
+                Triple("connectionAcquired", listOf("Lokhttp3/Call;", "Lokhttp3/Connection;"),
+                    "USER_INIT_CONNECTION_ACQUIRED"),
+            )
+            eventProbeSignatures.forEachIndexed { idx, (methodName, parameterTypes, event) ->
+                val methods = eventListenerCls.methods.filter { method ->
+                    method.name == methodName &&
+                        method.parameterTypes.map { it.toString() } == parameterTypes &&
+                        method.returnType == "V"
+                }
+                check(methods.size == 1) {
+                    "Expected OkHttp EventListener.$methodName$parameterTypes, found " +
+                        methods.size
+                }
+                val helperName = "morpheUserInitNetworkEvent" + idx
+                check(vmCls.methods.none { it.name == helperName })
+                vmCls.methods.add(ImmutableMethod(
+                    vmType, helperName,
+                    listOf(ImmutableMethodParameter("Lokhttp3/Call;", null, null)),
+                    "V", AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                    null, null, MutableMethodImplementation(3),
+                ).toMutable().apply { addInstructions(0, """
+                    invoke-interface {p0}, Lokhttp3/Call;->request()Lokhttp3/Request;
+                    move-result-object v0
+                    invoke-virtual {v0}, Lokhttp3/Request;->url()Lokhttp3/HttpUrl;
+                    move-result-object v0
+                    invoke-virtual {v0}, Lokhttp3/HttpUrl;->encodedPath()Ljava/lang/String;
+                    move-result-object v0
+                    const-string v1, "user/api/v1/init"
+                    invoke-virtual {v0, v1}, Ljava/lang/String;->endsWith(Ljava/lang/String;)Z
+                    move-result v2
+                    if-eqz v2, :event_trace_done
+                    const-string v0, "$event"
+                    invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                    :event_trace_done
+                    return-void
+                """.trimIndent()) })
+                val method = methods.single()
+                check(requireNotNull(method.implementation).instructions.isNotEmpty()) {
+                    "No OkHttp EventListener implementation for $methodName"
+                }
+                method.addInstructions(
+                    0, "invoke-static {p1}, $vmType->$helperName(Lokhttp3/Call;)V",
+                )
+            }
+
             // Diagnose *where* user/init stalls inside OkHttp's networking.
             // RetryInterceptor.proceed() includes DNS, TCP, TLS, server headers.
             // ConnectInterceptor entry is before DNS/connection selection;
