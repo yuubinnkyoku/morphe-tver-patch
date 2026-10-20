@@ -1693,6 +1693,54 @@ val tverPipPatch = bytecodePatch(
             traceEntry(cdnPresenterType, "getStartConfigUrlData", "CDN_CONFIG_REQUEST_START")
             traceEntry(sdkPresenterType, "getInitResponse", "SDK_INIT_REQUEST_START")
             traceEntry(sdkUpdateListenerType, "onUpdate", "SDK_PROFILE_CALLBACK_BEGIN")
+
+            // TVer 7.2.1's SDK implementation is obfuscated as b.l in classes8.dex.
+            // TVer.init() schedules l.a(Context) on its own ExecutorService.
+            // Only event names are recorded, never profile IDs/tokens/bodies.
+            val sdkInternalType = "Lb/l;"
+            val sdkProfileType = "Lb/p;"
+            val sdkInternalCls = mutableClassDefBy(classDefBy(sdkInternalType))
+            var sdkInternalTraceId = 0
+            fun traceSdkInternal(
+                name: String,
+                params: List<String>,
+                event: String,
+            ) {
+                val actualMethods = sdkInternalCls.methods.filter { method ->
+                    method.name == name &&
+                        method.parameterTypes.map { it.toString() } == params &&
+                        method.returnType == "V"
+                }
+                check(actualMethods.size == 1) {
+                    "Expected unique TVer SDK method $sdkInternalType->$name$params: " +
+                        "found " + actualMethods.size
+                }
+                val target = actualMethods.single()
+                val helperName = "morpheSdkInternalMilestone" + sdkInternalTraceId++
+                check(vmCls.methods.none { it.name == helperName })
+                vmCls.methods.add(ImmutableMethod(
+                    vmType, helperName, emptyList(), "V",
+                    AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                    null, null, MutableMethodImplementation(1),
+                ).toMutable().apply { addInstructions(0, """
+                    const-string v0, "$event"
+                    invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                    return-void
+                """.trimIndent()) })
+                check(requireNotNull(target.implementation).instructions.any()) {
+                    "Missing DEX implementation for TVer SDK method $name$params"
+                }
+                target.addInstructions(0, "invoke-static {}, $vmType->$helperName()V")
+            }
+            traceSdkInternal("a", listOf("Landroid/content/Context;"),
+                "SDK_INTERNAL_WORKER_START")
+            traceSdkInternal("b", listOf(sdkProfileType),
+                "SDK_INTERNAL_PROFILE_SETUP_START")
+            traceSdkInternal("g", listOf(sdkProfileType),
+                "SDK_INTERNAL_PROFILE_CALLBACK_QUEUED")
+            traceSdkInternal("h", listOf(sdkProfileType),
+                "SDK_INTERNAL_PROFILE_CALLBACK_DISPATCHED")
+
             // Network/suspension diagnostics: no behavior changes, no request
             // payloads, credentials, or result values are logged.
             // UserInitRepositoryImpl dispatches getUserInit() to Dispatchers.IO.
