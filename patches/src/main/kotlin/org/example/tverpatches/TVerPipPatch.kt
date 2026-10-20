@@ -1646,7 +1646,7 @@ val tverPipPatch = bytecodePatch(
                     move-result v5
                     const/4 v6, 0x0
                     invoke-virtual {v3, v6, v5, v6, v5}, Landroid/view/ViewGroup${'$'}MarginLayoutParams;->setMargins(IIII)V
-                    invoke-virtual {p0, v1, v3}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V
+                    invoke-virtual {p0, v1, v3}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup${'$'}LayoutParams;)V
                     return-void
                 """,
             )
@@ -1678,7 +1678,7 @@ val tverPipPatch = bytecodePatch(
                     const/high16 v9, 0x3f800000
                     invoke-direct {v7, v8, v3, v9}, Landroid/widget/LinearLayout${'$'}LayoutParams;-><init>(IIF)V
                     invoke-virtual {v7, v4, v4, v4, v4}, Landroid/view/ViewGroup${'$'}MarginLayoutParams;->setMargins(IIII)V
-                    invoke-virtual {v1, v5, v7}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V
+                    invoke-virtual {v1, v5, v7}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup${'$'}LayoutParams;)V
                     add-int/lit8 v2, v2, 0x1
                     goto :next_skeleton
                     :skeleton_done
@@ -1686,7 +1686,7 @@ val tverPipPatch = bytecodePatch(
                     const/4 v8, -0x1
                     const/4 v9, -0x2
                     invoke-direct {v7, v8, v9}, Landroid/widget/LinearLayout${'$'}LayoutParams;-><init>(II)V
-                    invoke-virtual {p0, v1, v7}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V
+                    invoke-virtual {p0, v1, v7}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup${'$'}LayoutParams;)V
                     return-void
                 """,
             )
@@ -1741,14 +1741,14 @@ val tverPipPatch = bytecodePatch(
                     const/4 v8, 0x0
                     const/high16 v9, 0x3f800000
                     invoke-direct {v5, v4, v8, v9}, Landroid/widget/LinearLayout${'$'}LayoutParams;-><init>(IIF)V
-                    invoke-virtual {v3, v6, v5}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V
+                    invoke-virtual {v3, v6, v5}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup${'$'}LayoutParams;)V
                     const-string v7, "ホーム    ライブ    さがす    マイページ"
                     const/16 v4, 0xc
                     invoke-static {v3, v7, v4}, $fragmentType->morpheEarlyHomeLabel(Landroid/widget/LinearLayout;Ljava/lang/String;I)V
                     new-instance v5, Landroid/widget/FrameLayout${'$'}LayoutParams;
                     const/4 v4, -0x1
                     invoke-direct {v5, v4, v4}, Landroid/widget/FrameLayout${'$'}LayoutParams;-><init>(II)V
-                    invoke-virtual {v1, v3, v5}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V
+                    invoke-virtual {v1, v3, v5}, Landroid/view/ViewGroup;->addView(Landroid/view/View;Landroid/view/ViewGroup${'$'}LayoutParams;)V
                     const-string v7, "EARLY_HOME_SHELL_ATTACHED"
                     invoke-static {v7}, $vmType->morpheLogStartup(Ljava/lang/String;)V
                     invoke-virtual {v1}, Landroid/view/View;->getViewTreeObserver()Landroid/view/ViewTreeObserver;
