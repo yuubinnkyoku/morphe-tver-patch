@@ -1,3 +1,9 @@
+## [1.1.0-dev.4](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.3...v1.1.0-dev.4) (2026-10-20)
+
+### ✨ New Features
+
+* collect TVer startup milestones without sensitive data ([3aca7cd](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3aca7cdaa507bd5abf80fb50bfacc455f562d5b9))
+
 ## [1.1.0-dev.3](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.2...v1.1.0-dev.3) (2026-10-19)
 
 ### 🐛 Bug Fixes

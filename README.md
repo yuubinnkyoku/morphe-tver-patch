@@ -54,7 +54,7 @@ PiPは`v1.0.0-dev.17`まで、Morphe設定は`v1.0.0-dev.18`までの実機テ�
 ## 🩹 パッチ一覧
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.1.0-dev.3](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.1.0-dev.3)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全2パッチ
+> **[v1.1.0-dev.4](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.1.0-dev.4)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全2パッチ
 <details open>
 <summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;2 パッチ</summary>
 <br>
