@@ -1,3 +1,9 @@
+## [1.1.0-dev.20](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.19...v1.1.0-dev.20) (2026-10-20)
+
+### ✨ New Features
+
+* trace actual HTTP 503 retry sleeps to distinguish user-init latency ([34d2f5c](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/34d2f5ca34ba0e7a270a92535d541cff4632633e))
+
 ## [1.1.0-dev.19](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.18...v1.1.0-dev.19) (2026-10-20)
 
 ### ✨ New Features
