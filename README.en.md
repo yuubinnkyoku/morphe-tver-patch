@@ -13,6 +13,7 @@ Unofficial [Morphe](https://morphe.software/) patches for TVer Android. Not affi
 | System picture-in-picture (PiP) | **Device-tested** | Automatic PiP on a replay episode, including immediately after opening it and while buffering. |
 | PiP exclusions | **Device-tested** | No automatic PiP for a paused episode or home-screen auto-preview. |
 | Morphe settings | **Device-tested** | `Morphe設定` on TVer's settings screen toggles the `PiP TEST` overlay. The preference survives app restarts. |
+| Startup timing log | **Not yet device-tested** | Logs startup milestones and exposes an in-app view/copy dialog. |
 | Client-side player ad suppression | **Experimental** | Attempts to disable pre-roll requests and some ad hooks. Complete ad removal is not established. |
 
 PiP was tested on an Android device through **v1.0.0-dev.17**, and Morphe settings through **v1.0.0-dev.18**. Functionality on other Android devices and TVer video types is not guaranteed. CI success alone does not constitute an on-device test.
@@ -31,6 +32,7 @@ Patch bundles are published on [GitHub Releases](https://github.com/yuubinnkyoku
 - **Replay paused:** Automatic PiP is blocked.
 - **Home auto-playing preview:** Automatic PiP is blocked.
 - **PiP TEST button:** Visible by default; go to **TVer settings → Morphe設定 → PiP TESTボタンを表示** to turn it off. This setting changes only the manual test button, not automatic PiP.
+- **Startup log:** Open **TVer settings → Morphe設定 → 起動ログを表示・コピー**, then tap **コピー** to copy the timing milestones. Values after `+` are milliseconds since the first recorded event. Logs are kept in process memory and disappear when the process ends; no account identifiers or API response bodies are included. Device verification is pending.
 
 ## Roadmap (not implemented)
 
