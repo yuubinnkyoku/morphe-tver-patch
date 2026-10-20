@@ -1,3 +1,9 @@
+## [1.1.0-dev.17](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.16...v1.1.0-dev.17) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* remove noninteractive early-home splash skeleton overlay ([0ea2078](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/0ea20785674a6c6fb6e60e35d513043b265b5aba))
+
 ## [1.1.0-dev.16](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.15...v1.1.0-dev.16) (2026-10-20)
 
 ### 🐛 Bug Fixes
