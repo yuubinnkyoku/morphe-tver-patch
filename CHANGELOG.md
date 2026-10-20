@@ -1,3 +1,9 @@
+## [1.1.0-dev.25](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.24...v1.1.0-dev.25) (2026-10-20)
+
+### ✨ New Features
+
+* measure SDK 24-hour salt refresh HTTP latency in startup ([97e4c74](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/97e4c7482329a6383aca512b928cae5d100efe48))
+
 ## [1.1.0-dev.24](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.23...v1.1.0-dev.24) (2026-10-20)
 
 ### 🐛 Bug Fixes

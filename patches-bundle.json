@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-20T14:52:54",
-  "description": "## [1.1.0-dev.24](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.23...v1.1.0-dev.24) (2026-10-20)\n\n### 🐛 Bug Fixes\n\n* escape interceptor Chain nested-class descriptor in transport milestone ([19ed544](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/19ed5440d68a13fc7be53e3a4511099fb1661cee))\n* interpolate OkHttp Chain method descriptor using existing type constant ([982e446](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/982e446b0286ad5f0c30eac189b6edbb897b1a54))\n* remove duplicated malformed Smali source trailing after patch closure ([a2a0998](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/a2a09983ef425caadd6469d0dfd9a0005ae94d96))\n\n### ✨ New Features\n\n* distinguish user/init connection setup from server response waiting ([5c399eb](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5c399eb73e6991f7cebb9c1fc451d1235835c5fa))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.24/patches-1.1.0-dev.24.mpp",
+  "created_at": "2026-10-20T15:08:36",
+  "description": "## [1.1.0-dev.25](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.24...v1.1.0-dev.25) (2026-10-20)\n\n### ✨ New Features\n\n* measure SDK 24-hour salt refresh HTTP latency in startup ([97e4c74](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/97e4c7482329a6383aca512b928cae5d100efe48))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.25/patches-1.1.0-dev.25.mpp",
   "signature_download_url": "",
-  "version": "1.1.0-dev.24"
+  "version": "1.1.0-dev.25"
 }
