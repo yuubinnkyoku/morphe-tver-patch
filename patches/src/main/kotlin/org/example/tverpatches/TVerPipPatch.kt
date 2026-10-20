@@ -1582,7 +1582,7 @@ val tverPipPatch = bytecodePatch(
             homeTab.interfaces.add("Ljava/lang/Runnable;")
             homeTab.fields.add(ImmutableField(
                 homeTabType, "morpheHomeFrameCallbackArmed", "Z",
-                AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
+                AccessFlags.PRIVATE.value,
                 null, null, null,
             ).toMutableField())
             homeTab.methods.add(ImmutableMethod(
@@ -1590,7 +1590,7 @@ val tverPipPatch = bytecodePatch(
                 AccessFlags.PUBLIC.value,
                 null, null, MutableMethodImplementation(4),
             ).toMutable().apply { addInstructions(0, """
-                sget-boolean v0, $homeTabType->morpheHomeFrameCallbackArmed:Z
+                iget-boolean v0, p0, $homeTabType->morpheHomeFrameCallbackArmed:Z
                 if-nez v0, :done
                 invoke-virtual {p0}, Landroidx/fragment/app/Fragment;->getView()Landroid/view/View;
                 move-result-object v0
@@ -1601,7 +1601,7 @@ val tverPipPatch = bytecodePatch(
                 move-result v1
                 if-eqz v1, :done
                 const/4 v1, 0x1
-                sput-boolean v1, $homeTabType->morpheHomeFrameCallbackArmed:Z
+                iput-boolean v1, p0, $homeTabType->morpheHomeFrameCallbackArmed:Z
                 invoke-virtual {v0, p0}, Landroid/view/ViewTreeObserver;->registerFrameCommitCallback(Ljava/lang/Runnable;)V
                 const-string v0, "HOME_FRAME_COMMIT_ARMED"
                 invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
@@ -1649,6 +1649,17 @@ val tverPipPatch = bytecodePatch(
                 "onSdkInitError" to "SDK_INIT_ERROR",
                 "transitionToHome" to "TRANSITION_TO_HOME_REQUESTED",
             ).forEach { (name, event) -> traceEntry(fragmentType, name, event) }
+            // Distinguish SDK network / callback work from CDN startup. Both
+            // requests are scheduled after TVerApp.init, and run independently.
+            val cdnPresenterType =
+                "Ljp/hamitv/hamiand1/tver/presenters/cdn/CdnStartConfigUrlPresenter;"
+            val sdkPresenterType =
+                "Ljp/hamitv/hamiand1/tver/presenters/sdk/SdkInitPresenter;"
+            val sdkUpdateListenerType =
+                sdkPresenterType.dropLast(1) + "$" + "getInitResponse" + "$" + "1;"
+            traceEntry(cdnPresenterType, "getStartConfigUrlData", "CDN_CONFIG_REQUEST_START")
+            traceEntry(sdkPresenterType, "getInitResponse", "SDK_INIT_REQUEST_START")
+            traceEntry(sdkUpdateListenerType, "onUpdate", "SDK_PROFILE_CALLBACK_BEGIN")
             traceEntry(vmType, "callUserInit", "USER_INIT_CALL")
             traceEntry(vmType, "onSessionReady", "SESSION_READY_SIGNAL")
             traceEntry(vmType, "onPrivacyPolicyGatePassed", "PRIVACY_GATE_PASSED")
