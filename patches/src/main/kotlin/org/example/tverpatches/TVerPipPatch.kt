@@ -1811,9 +1811,11 @@ val tverPipPatch = bytecodePatch(
             check(updateCalls.size == 1) {
                 "Expected exactly one updateAppRemoteConfig call: ${updateCalls.size}"
             }
-            // updateAppRemoteConfig returns void; injection cannot break move-result.
+            // Start first, before updateAppRemoteConfig may complete inline
+            // on a warm cache. Otherwise a synchronous completion could cause
+            // original startup and parallel startup to run twice.
             createViewMethod.addInstructions(
-                updateCalls.single() + 1,
+                updateCalls.single(),
                 "invoke-direct {p0}, $fragmentType->morpheStartTverAppEarly()V",
             )
             val remoteReadyMethod = parallelFrag.methods.single {
