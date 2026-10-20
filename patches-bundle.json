@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-20T12:44:25",
-  "description": "## [1.1.0-dev.20](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.19...v1.1.0-dev.20) (2026-10-20)\n\n### ✨ New Features\n\n* trace actual HTTP 503 retry sleeps to distinguish user-init latency ([34d2f5c](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/34d2f5ca34ba0e7a270a92535d541cff4632633e))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.20/patches-1.1.0-dev.20.mpp",
+  "created_at": "2026-10-20T13:11:38",
+  "description": "## [1.1.0-dev.21](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.20...v1.1.0-dev.21) (2026-10-20)\n\n### 🐛 Bug Fixes\n\n* escape nested OkHttp Chain descriptor in Kotlin Smali source ([450438c](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/450438c570191c04a973d08a1b16bda85344f2af))\n* restore Smali template and correctly escape nested OkHttp Chain name ([b75e879](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/b75e879a77387da9f457164cebf205100b61f531))\n\n### ✨ New Features\n\n* instrument user/init HTTP attempt latency and status without exposing payloads ([7b2b576](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/7b2b576f5f0a76c00d58af44765afbd5fa130a09))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.21/patches-1.1.0-dev.21.mpp",
   "signature_download_url": "",
-  "version": "1.1.0-dev.20"
+  "version": "1.1.0-dev.21"
 }

@@ -1,3 +1,14 @@
+## [1.1.0-dev.21](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.20...v1.1.0-dev.21) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* escape nested OkHttp Chain descriptor in Kotlin Smali source ([450438c](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/450438c570191c04a973d08a1b16bda85344f2af))
+* restore Smali template and correctly escape nested OkHttp Chain name ([b75e879](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/b75e879a77387da9f457164cebf205100b61f531))
+
+### ✨ New Features
+
+* instrument user/init HTTP attempt latency and status without exposing payloads ([7b2b576](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/7b2b576f5f0a76c00d58af44765afbd5fa130a09))
+
 ## [1.1.0-dev.20](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.19...v1.1.0-dev.20) (2026-10-20)
 
 ### ✨ New Features
