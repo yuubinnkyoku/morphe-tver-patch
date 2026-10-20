@@ -1,3 +1,9 @@
+## [1.1.0-dev.19](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.18...v1.1.0-dev.19) (2026-10-20)
+
+### ✨ New Features
+
+* trace TVer SDK executor, profile setup and callback dispatch to isolate slow init ([4904d79](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/4904d797e4e600fce4e3eb7a0bbd777079a347e3))
+
 ## [1.1.0-dev.18](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.17...v1.1.0-dev.18) (2026-10-20)
 
 ### 🐛 Bug Fixes

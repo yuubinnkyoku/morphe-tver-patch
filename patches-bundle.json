@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-20T11:48:25",
-  "description": "## [1.1.0-dev.18](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.17...v1.1.0-dev.18) (2026-10-20)\n\n### 🐛 Bug Fixes\n\n* access coroutine label only from helper declared in its own class ([61311b4](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/61311b4159500c1d296889e4fdc4eb16aeeb05d7))\n\n### ✨ New Features\n\n* trace user/init coroutine and home SDK wait without changing startup gates ([a58f008](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/a58f008a165f2141b593ed299605f92d4d97878e))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.18/patches-1.1.0-dev.18.mpp",
+  "created_at": "2026-10-20T12:25:05",
+  "description": "## [1.1.0-dev.19](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.18...v1.1.0-dev.19) (2026-10-20)\n\n### ✨ New Features\n\n* trace TVer SDK executor, profile setup and callback dispatch to isolate slow init ([4904d79](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/4904d797e4e600fce4e3eb7a0bbd777079a347e3))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.19/patches-1.1.0-dev.19.mpp",
   "signature_download_url": "",
-  "version": "1.1.0-dev.18"
+  "version": "1.1.0-dev.19"
 }
