@@ -949,6 +949,14 @@ val tverPipPatch = bytecodePatch(
                     invoke-virtual {v0, v3}, Landroid/widget/CompoundButton;->setChecked(Z)V
                     invoke-virtual {v0, p0}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
                     invoke-virtual {v7, v0}, Landroid/view/ViewGroup;->addView(Landroid/view/View;)V
+                    new-instance v0, Landroid/widget/Button;
+                    invoke-direct {v0, p0}, Landroid/widget/Button;-><init>(Landroid/content/Context;)V
+                    const-string v1, "起動ログを表示・コピー"
+                    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+                    const-string v1, "morphe.tver.startup.view"
+                    invoke-virtual {v0, v1}, Landroid/view/View;->setTag(Ljava/lang/Object;)V
+                    invoke-virtual {v0, p0}, Landroid/view/View;->setOnClickListener(Landroid/view/View${'$'}OnClickListener;)V
+                    invoke-virtual {v7, v0}, Landroid/view/ViewGroup;->addView(Landroid/view/View;)V
                     new-instance v4, Landroid/app/AlertDialog${'$'}Builder;
                     invoke-direct {v4, p0}, Landroid/app/AlertDialog${'$'}Builder;-><init>(Landroid/content/Context;)V
                     const-string v5, "Morphe設定"
@@ -958,6 +966,48 @@ val tverPipPatch = bytecodePatch(
                     const/4 v6, 0x0
                     invoke-virtual {v4, v5, v6}, Landroid/app/AlertDialog${'$'}Builder;->setPositiveButton(Ljava/lang/CharSequence;Landroid/content/DialogInterface${'$'}OnClickListener;)Landroid/app/AlertDialog${'$'}Builder;
                     invoke-virtual {v4}, Landroid/app/AlertDialog${'$'}Builder;->show()Landroid/app/AlertDialog;
+                    return-void
+                """)
+
+
+                addMethod("morpheShowStartupLogDialog", emptyList(), 8, """
+                    new-instance v0, Landroid/app/AlertDialog${'$'}Builder;
+                    invoke-direct {v0, p0}, Landroid/app/AlertDialog${'$'}Builder;-><init>(Landroid/content/Context;)V
+                    const-string v1, "起動ログ（アプリ終了まで保持）"
+                    invoke-virtual {v0, v1}, Landroid/app/AlertDialog${'$'}Builder;->setTitle(Ljava/lang/CharSequence;)Landroid/app/AlertDialog${'$'}Builder;
+                    invoke-static {}, Ljp/hamitv/hamiand1/tver/ui/fragments/splash/SplashViewModel;->morpheGetStartupLog()Ljava/lang/String;
+                    move-result-object v2
+                    invoke-virtual {v0, v2}, Landroid/app/AlertDialog${'$'}Builder;->setMessage(Ljava/lang/CharSequence;)Landroid/app/AlertDialog${'$'}Builder;
+                    const/4 v2, 0x0
+                    const-string v1, "閉じる"
+                    invoke-virtual {v0, v1, v2}, Landroid/app/AlertDialog${'$'}Builder;->setNegativeButton(Ljava/lang/CharSequence;Landroid/content/DialogInterface${'$'}OnClickListener;)Landroid/app/AlertDialog${'$'}Builder;
+                    const-string v1, "コピー"
+                    invoke-virtual {v0, v1, v2}, Landroid/app/AlertDialog${'$'}Builder;->setPositiveButton(Ljava/lang/CharSequence;Landroid/content/DialogInterface${'$'}OnClickListener;)Landroid/app/AlertDialog${'$'}Builder;
+                    invoke-virtual {v0}, Landroid/app/AlertDialog${'$'}Builder;->show()Landroid/app/AlertDialog;
+                    move-result-object v3
+                    const/4 v4, -0x1
+                    invoke-virtual {v3, v4}, Landroid/app/AlertDialog;->getButton(I)Landroid/widget/Button;
+                    move-result-object v3
+                    const-string v4, "morphe.tver.startup.copy"
+                    invoke-virtual {v3, v4}, Landroid/view/View;->setTag(Ljava/lang/Object;)V
+                    invoke-virtual {v3, p0}, Landroid/view/View;->setOnClickListener(Landroid/view/View${'$'}OnClickListener;)V
+                    return-void
+                """)
+
+                addMethod("morpheCopyStartupLog", emptyList(), 6, """
+                    const-string v0, "clipboard"
+                    invoke-virtual {p0, v0}, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
+                    move-result-object v0
+                    instance-of v1, v0, Landroid/content/ClipboardManager;
+                    if-eqz v1, :done
+                    check-cast v0, Landroid/content/ClipboardManager;
+                    invoke-static {}, Ljp/hamitv/hamiand1/tver/ui/fragments/splash/SplashViewModel;->morpheGetStartupLog()Ljava/lang/String;
+                    move-result-object v1
+                    const-string v2, "TVer起動ログ"
+                    invoke-static {v2, v1}, Landroid/content/ClipData;->newPlainText(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Landroid/content/ClipData;
+                    move-result-object v1
+                    invoke-virtual {v0, v1}, Landroid/content/ClipboardManager;->setPrimaryClip(Landroid/content/ClipData;)V
+                    :done
                     return-void
                 """)
 
@@ -999,8 +1049,26 @@ val tverPipPatch = bytecodePatch(
                     const-string v1, "morphe.tver.settings.entry"
                     invoke-virtual {v1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
                     move-result v0
-                    if-eqz v0, :pip_test
+                    if-eqz v0, :startup_view
                     invoke-virtual {p0}, $activityType->morpheShowSettingsDialog()V
+                    return-void
+                    :startup_view
+                    invoke-virtual {p1}, Landroid/view/View;->getTag()Ljava/lang/Object;
+                    move-result-object v0
+                    const-string v1, "morphe.tver.startup.view"
+                    invoke-virtual {v1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+                    move-result v0
+                    if-eqz v0, :startup_copy
+                    invoke-virtual {p0}, $activityType->morpheShowStartupLogDialog()V
+                    return-void
+                    :startup_copy
+                    invoke-virtual {p1}, Landroid/view/View;->getTag()Ljava/lang/Object;
+                    move-result-object v0
+                    const-string v1, "morphe.tver.startup.copy"
+                    invoke-virtual {v1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+                    move-result v0
+                    if-eqz v0, :pip_test
+                    invoke-virtual {p0}, $activityType->morpheCopyStartupLog()V
                     return-void
                     :pip_test
                     """.trimIndent() else ""}
