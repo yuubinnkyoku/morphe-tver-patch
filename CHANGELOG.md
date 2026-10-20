@@ -1,3 +1,9 @@
+## [1.1.0-dev.14](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.13...v1.1.0-dev.14) (2026-10-20)
+
+### ✨ New Features
+
+* opt-in native Firebase Remote Config 5-minute cache to reduce real warm-start latency ([ca27427](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/ca274279f5d3a9d367d4f868d4ccc3a4691bee26))
+
 ## [1.1.0-dev.13](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.12...v1.1.0-dev.13) (2026-10-20)
 
 ### 🐛 Bug Fixes
