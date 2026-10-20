@@ -11,6 +11,11 @@ import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AccessFlags
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
+import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction35c
+import com.android.tools.smali.dexlib2.iface.instruction.formats.Instruction35c
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
 import com.android.tools.smali.dexlib2.immutable.ImmutableField
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodParameter
@@ -1387,6 +1392,90 @@ val tverPipPatch = bytecodePatch(
                     0, "invoke-static {}, $vmType->$helperName()V"
                 )
             }
+
+            // TVer 7.2.1: the setting.json request is made in
+            // TVerApp.init\$lambda\$3 via okhttp3.Call.execute(). Replace its
+            // 3-code-unit invoke-interface with a 3-code-unit invoke-static.
+            // No surrounding offsets, register values or try ranges change.
+            val tverAppType = "Ljp/tver/appsdk/TVerApp;"
+            val tverAppCls = mutableClassDefBy(classDefBy(tverAppType))
+            val requestMethod = tverAppCls.methods.single { it.name == "init" + "$" + "lambda" + "$" + "3" }
+            val requestInstructions = requireNotNull(requestMethod.implementation).instructions.toList()
+            val executeMatches = requestInstructions.indices.filter { index ->
+                val inst = requestInstructions[index]
+                val ref = (inst as? ReferenceInstruction)?.reference as? MethodReference
+                inst.opcode == Opcode.INVOKE_INTERFACE &&
+                    ref?.definingClass == "Lokhttp3/Call;" &&
+                    ref.name == "execute" &&
+                    ref.parameterTypes.isEmpty() &&
+                    ref.returnType == "Lokhttp3/Response;"
+            }
+            check(executeMatches.size == 1) {
+                "Expected exactly one Call.execute() in TVerApp.init worker; got ${executeMatches.size}"
+            }
+            val executeIndex = executeMatches.single()
+            val oldCall = requestInstructions[executeIndex] as Instruction35c
+            check(oldCall.registerCount == 1) {
+                "Expected one register for okhttp Call.execute(), got ${oldCall.registerCount}"
+            }
+
+            // The wrapper records only event names and timestamps; it never
+            // exposes request headers, URLs, responses or user data.
+            val executeWrapperName = "morpheExecuteSettingRequest"
+            check(vmCls.methods.none { it.name == executeWrapperName })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, executeWrapperName,
+                listOf(ImmutableMethodParameter("Lokhttp3/Call;", null, null)),
+                "Lokhttp3/Response;",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(2),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "SETTINGS_HTTP_START"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                invoke-interface {p0}, Lokhttp3/Call;->execute()Lokhttp3/Response;
+                move-result-object v0
+                invoke-static {}, $vmType->morpheNoteSettingsHttpDone()V
+                return-object v0
+            """.trimIndent()) })
+            check(vmCls.methods.none { it.name == "morpheNoteSettingsHttpDone" })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheNoteSettingsHttpDone", emptyList(), "V",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(1),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "SETTINGS_HTTP_RESPONSE_RECEIVED"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                return-void
+            """.trimIndent()) })
+            val workerImplementation =
+                requireNotNull(requestMethod.implementation) as MutableMethodImplementation
+            workerImplementation.replaceInstruction(
+                executeIndex,
+                BuilderInstruction35c(
+                    Opcode.INVOKE_STATIC, 1, oldCall.registerC, 0, 0, 0, 0,
+                    ImmutableMethodReference(
+                        vmType, executeWrapperName,
+                        listOf("Lokhttp3/Call;"), "Lokhttp3/Response;"
+                    ),
+                ),
+            )
+            // Only a single entry insertion per method; no register clobbering.
+            traceEntry(tverAppType, "init" + "$" + "lambda" + "$" + "3", "SETTINGS_WORKER_START")
+            traceEntry(
+                tverAppType,
+                "init" + "$" + "lambda" + "$" + "3" + "$" + "lambda" + "$" + "1",
+                "SETTINGS_CONFIG_APPLIED_CALLBACK",
+            )
+            traceEntry(
+                tverAppType,
+                "init" + "$" + "lambda" + "$" + "3" + "$" + "lambda" + "$" + "2",
+                "SETTINGS_HTTP_ERROR_CALLBACK",
+            )
+            val homeTabType = "Ljp/hamitv/hamiand1/tver/ui/fragments/top/TabMainActivityFragment;"
+            traceEntry(homeTabType, "onViewCreated", "HOME_TAB_VIEW_CREATED")
+            traceEntry(homeTabType, "initTabs", "HOME_TAB_CONTENT_INIT_START")
+            traceEntry(homeTabType, "toHome", "HOME_NAVIGATION_START")
+
             val fragmentType = "Ljp/hamitv/hamiand1/tver/ui/fragments/splash/SplashFragment;"
             listOf(
                 "onViewCreated" to "SPLASH_VIEW_CREATED",
