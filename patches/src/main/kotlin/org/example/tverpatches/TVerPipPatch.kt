@@ -1781,6 +1781,86 @@ val tverPipPatch = bytecodePatch(
                 invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
                 return-void
             """.trimIndent()) })
+
+            // Measure *each* OkHttp network-chain attempt on the deprecated
+            // user/api/v1/init endpoint, with no URL/headers/body/token output.
+            // This also records status codes, not just HTTP 503 sleep intervals.
+            // If no start is observed until late: investigate Retrofit dispatch.
+            // If start-to-end spans the delay: investigate network/transport.
+            // If end occurs early: investigate body reading/JSON/coroutines.
+            check(vmCls.methods.none { it.name == "morpheTraceUserInitHttpProceed" })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheTraceUserInitHttpProceed",
+                listOf(
+                    ImmutableMethodParameter("Lokhttp3/Interceptor" + "$" + "Chain;", null, null),
+                    ImmutableMethodParameter("Lokhttp3/Request;", null, null),
+                ),
+                "Lokhttp3/Response;",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(9),
+            ).toMutable().apply { addInstructions(0, """
+                invoke-virtual {p1}, Lokhttp3/Request;->url()Lokhttp3/HttpUrl;
+                move-result-object v0
+                invoke-virtual {v0}, Lokhttp3/HttpUrl;->encodedPath()Ljava/lang/String;
+                move-result-object v0
+                const-string v1, "user/api/v1/init"
+                invoke-virtual {v0, v1}, Ljava/lang/String;->endsWith(Ljava/lang/String;)Z
+                move-result v2
+                if-eqz v2, :attempt_start_done
+                const-string v3, "USER_INIT_HTTP_ATTEMPT_START"
+                invoke-static {v3}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                :attempt_start_done
+                invoke-interface {p0, p1}, Lokhttp3/Interceptor$Chain;->proceed(Lokhttp3/Request;)Lokhttp3/Response;
+                move-result-object v4
+                if-eqz v2, :attempt_done
+                const-string v3, "USER_INIT_HTTP_ATTEMPT_END"
+                invoke-static {v3}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                invoke-virtual {v4}, Lokhttp3/Response;->code()I
+                move-result v5
+                invoke-static {v5}, Ljava/lang/String;->valueOf(I)Ljava/lang/String;
+                move-result-object v5
+                const-string v3, "USER_INIT_HTTP_STATUS_"
+                invoke-virtual {v3, v5}, Ljava/lang/String;->concat(Ljava/lang/String;)Ljava/lang/String;
+                move-result-object v3
+                invoke-static {v3}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                :attempt_done
+                return-object v4
+            """.trimIndent()) })
+            val retryProceedInsns =
+                requireNotNull(retryMethod.implementation).instructions.toList()
+            val retryProceedMatches = retryProceedInsns.indices.filter { i ->
+                val op = retryProceedInsns[i]
+                val ref = (op as? ReferenceInstruction)?.reference as? MethodReference
+                op.opcode == Opcode.INVOKE_INTERFACE &&
+                    ref?.definingClass == "Lokhttp3/Interceptor" + "$" + "Chain;" &&
+                    ref.name == "proceed" &&
+                    ref.parameterTypes.map { it.toString() } == listOf("Lokhttp3/Request;") &&
+                    ref.returnType == "Lokhttp3/Response;"
+            }
+            check(retryProceedMatches.size == 2) {
+                "Expected two RetryInterceptor chain.proceed calls, got " +
+                    retryProceedMatches.size
+            }
+            val retryImpl = requireNotNull(
+                retryMethod.implementation as? MutableMethodImplementation
+            )
+            retryProceedMatches.forEach { i ->
+                val original = retryProceedInsns[i] as Instruction35c
+                check(original.registerCount == 2)
+                retryImpl.replaceInstruction(
+                    i,
+                    BuilderInstruction35c(
+                        Opcode.INVOKE_STATIC, 2, original.registerC, original.registerD,
+                        0, 0, 0,
+                        ImmutableMethodReference(
+                            vmType, "morpheTraceUserInitHttpProceed",
+                            listOf("Lokhttp3/Interceptor" + "$" + "Chain;", "Lokhttp3/Request;"),
+                            "Lokhttp3/Response;",
+                        ),
+                    ),
+                )
+            }
+
             val oldSleep = retryInsns[sleepMatches.single()] as Instruction35c
             check(oldSleep.registerCount == 2) {
                 "RetryInterceptor sleep expects one long (two registers)"
