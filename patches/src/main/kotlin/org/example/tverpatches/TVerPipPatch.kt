@@ -1331,6 +1331,20 @@ val tverPipPatch = bytecodePatch(
                 return-object v0
             """.trimIndent()) })
 
+            // No argument registers are read in the conditional bypass itself.
+            // Calling the zero-arg helper avoids a v0 reference/boolean verifier
+            // conflict in SplashViewModel.appliesHomeLoadGrace() (Android 16).
+            check(vmCls.methods.none { it.name == "morpheNoteHomeGraceSkipped" })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheNoteHomeGraceSkipped", emptyList(), "V",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(1),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "HOME_GRACE_SKIPPED"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                return-void
+            """.trimIndent()) })
+
             val grace = vmCls.methods.single {
                 it.name == "appliesHomeLoadGrace" && it.parameterTypes.isEmpty()
             }
@@ -1340,8 +1354,7 @@ val tverPipPatch = bytecodePatch(
             grace.addInstructions(0, """
                 sget-boolean v0, $splashType->morpheStartupSkipCached:Z
                 if-eqz v0, :morphe_original_grace
-                const-string v0, "HOME_GRACE_SKIPPED"
-                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                invoke-static {}, $vmType->morpheNoteHomeGraceSkipped()V
                 const/4 v0, 0x0
                 return v0
                 :morphe_original_grace
