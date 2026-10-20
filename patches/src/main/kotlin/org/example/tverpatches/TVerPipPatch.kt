@@ -1371,7 +1371,10 @@ val tverPipPatch = bytecodePatch(
             // v0, which can change verifier type across existing control flow).
             // The separate helper owns its private scratch register.
             var milestoneId = 0
-            fun traceEntry(descriptor: String, name: String, event: String) {
+            fun traceEntry(
+                descriptor: String, name: String, event: String,
+                afterCall: String = "",
+            ) {
                 val helperName = "morpheStartupMilestone" + milestoneId++
                 check(vmCls.methods.none { it.name == helperName })
                 vmCls.methods.add(ImmutableMethod(
@@ -1388,9 +1391,10 @@ val tverPipPatch = bytecodePatch(
                 check(requireNotNull(method.implementation).instructions.any()) {
                     "No bytecode for startup milestone: $descriptor->$name"
                 }
-                method.addInstructions(
-                    0, "invoke-static {}, $vmType->$helperName()V"
-                )
+                method.addInstructions(0, """
+                    invoke-static {}, $vmType->$helperName()V
+                    $afterCall
+                """.trimIndent())
             }
 
             // TVer 7.2.1: the setting.json request is made in
@@ -1472,13 +1476,79 @@ val tverPipPatch = bytecodePatch(
                 "SETTINGS_HTTP_ERROR_CALLBACK",
             )
             val homeTabType = "Ljp/hamitv/hamiand1/tver/ui/fragments/top/TabMainActivityFragment;"
+            val homeTab = mutableClassDefBy(classDefBy(homeTabType))
+            // Android 10+ frame-commit notification: unlike a posted Runnable
+            // or a pre-draw callback, this fires after a frame is submitted to
+            // the GPU swap chain. The callback is one-shot by platform design.
+            // It tracks the FIRST frame committed after tab initialization,
+            // not necessarily fully loaded remote home content.
+            check("Ljava/lang/Runnable;" !in homeTab.interfaces) {
+                "Home tab unexpectedly already implements Runnable"
+            }
+            check(homeTab.methods.none {
+                it.name in setOf("run", "morpheArmHomeFrameCommit") &&
+                    it.parameterTypes.isEmpty()
+            })
+            homeTab.interfaces.add("Ljava/lang/Runnable;")
+            homeTab.fields.add(ImmutableField(
+                homeTabType, "morpheHomeFrameCallbackArmed", "Z",
+                AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
+                null, null, null,
+            ).toMutableField())
+            homeTab.methods.add(ImmutableMethod(
+                homeTabType, "morpheArmHomeFrameCommit", emptyList(), "V",
+                AccessFlags.PUBLIC.value,
+                null, null, MutableMethodImplementation(4),
+            ).toMutable().apply { addInstructions(0, """
+                sget-boolean v0, $homeTabType->morpheHomeFrameCallbackArmed:Z
+                if-nez v0, :done
+                invoke-virtual {p0}, Landroidx/fragment/app/Fragment;->getView()Landroid/view/View;
+                move-result-object v0
+                if-eqz v0, :done
+                invoke-virtual {v0}, Landroid/view/View;->getViewTreeObserver()Landroid/view/ViewTreeObserver;
+                move-result-object v0
+                invoke-virtual {v0}, Landroid/view/ViewTreeObserver;->isAlive()Z
+                move-result v1
+                if-eqz v1, :done
+                const/4 v1, 0x1
+                sput-boolean v1, $homeTabType->morpheHomeFrameCallbackArmed:Z
+                invoke-virtual {v0, p0}, Landroid/view/ViewTreeObserver;->registerFrameCommitCallback(Ljava/lang/Runnable;)V
+                const-string v0, "HOME_FRAME_COMMIT_ARMED"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                :done
+                return-void
+            """.trimIndent()) })
+            homeTab.methods.add(ImmutableMethod(
+                homeTabType, "run", emptyList(), "V",
+                AccessFlags.PUBLIC.value,
+                null, null, MutableMethodImplementation(1),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "HOME_FIRST_FRAME_COMMITTED_AFTER_INIT"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                return-void
+            """.trimIndent()) })
             traceEntry(homeTabType, "onViewCreated", "HOME_TAB_VIEW_CREATED")
-            traceEntry(homeTabType, "initTabs", "HOME_TAB_CONTENT_INIT_START")
+            // Inject one small sequence, once, at method entry. No custom
+            // branches or register clobbering in the original initTabs code.
+            traceEntry(
+                homeTabType, "initTabs", "HOME_TAB_CONTENT_INIT_START",
+                "invoke-virtual {p0}, $homeTabType->morpheArmHomeFrameCommit()V",
+            )
             traceEntry(homeTabType, "toHome", "HOME_NAVIGATION_START")
 
+            // Measure the actual remote-config interactor entry plus the
+            // completion callback that gates initializeSdkPlugins(). The
+            // callback also runs after an exception; this measures total
+            // elapsed time until the gate is released, not only network RTT.
+            val remoteType =
+                "Ljp/hamitv/hamiand1/tver/core/common/domain/remoteconfig/data/RemoteConfigInteractor;"
+            traceEntry(vmType, "updateAppRemoteConfig", "REMOTE_CONFIG_SCHEDULED")
+            traceEntry(remoteType, "fetchAndActivate", "REMOTE_CONFIG_FETCH_ENTER")
             val fragmentType = "Ljp/hamitv/hamiand1/tver/ui/fragments/splash/SplashFragment;"
             listOf(
                 "onViewCreated" to "SPLASH_VIEW_CREATED",
+                "onCreateView" to "SPLASH_CREATE_VIEW_ENTER",
+                "onCreateView" + "$" + "lambda" + "$" + "0" to "REMOTE_CONFIG_GATE_RELEASED",
                 "initializeSdkPlugins" to "SDK_PLUGIN_INIT_START",
                 "tverAppInitSuccessProcess" to "TVER_APP_INIT_SUCCESS",
                 "onCdnStartConfigUrlResponse" to "CDN_CONFIG_RECEIVED",
