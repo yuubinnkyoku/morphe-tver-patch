@@ -1,3 +1,9 @@
+## [1.1.0-dev.5](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.4...v1.1.0-dev.5) (2026-10-20)
+
+### ✨ New Features
+
+* show startup timeline and copy it from Morphe settings ([6f9f931](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/6f9f931a9987f8817c01308ed7c4dadffa6fcc1d))
+
 ## [1.1.0-dev.4](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.3...v1.1.0-dev.4) (2026-10-20)
 
 ### ✨ New Features
