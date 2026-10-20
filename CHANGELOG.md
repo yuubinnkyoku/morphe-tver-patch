@@ -1,3 +1,13 @@
+## [1.1.0-dev.18](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.17...v1.1.0-dev.18) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* access coroutine label only from helper declared in its own class ([61311b4](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/61311b4159500c1d296889e4fdc4eb16aeeb05d7))
+
+### ✨ New Features
+
+* trace user/init coroutine and home SDK wait without changing startup gates ([a58f008](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/a58f008a165f2141b593ed299605f92d4d97878e))
+
 ## [1.1.0-dev.17](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.16...v1.1.0-dev.17) (2026-10-20)
 
 ### 🐛 Bug Fixes

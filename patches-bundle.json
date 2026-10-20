@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-20T11:29:55",
-  "description": "## [1.1.0-dev.17](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.16...v1.1.0-dev.17) (2026-10-20)\n\n### 🐛 Bug Fixes\n\n* remove noninteractive early-home splash skeleton overlay ([0ea2078](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/0ea20785674a6c6fb6e60e35d513043b265b5aba))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.17/patches-1.1.0-dev.17.mpp",
+  "created_at": "2026-10-20T11:48:25",
+  "description": "## [1.1.0-dev.18](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.17...v1.1.0-dev.18) (2026-10-20)\n\n### 🐛 Bug Fixes\n\n* access coroutine label only from helper declared in its own class ([61311b4](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/61311b4159500c1d296889e4fdc4eb16aeeb05d7))\n\n### ✨ New Features\n\n* trace user/init coroutine and home SDK wait without changing startup gates ([a58f008](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/a58f008a165f2141b593ed299605f92d4d97878e))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.18/patches-1.1.0-dev.18.mpp",
   "signature_download_url": "",
-  "version": "1.1.0-dev.17"
+  "version": "1.1.0-dev.18"
 }
