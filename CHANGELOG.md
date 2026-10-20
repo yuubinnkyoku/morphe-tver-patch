@@ -1,3 +1,9 @@
+## [1.1.0-dev.8](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.7...v1.1.0-dev.8) (2026-10-20)
+
+### ✨ New Features
+
+* measure setting.json HTTP latency and home tab milestones without shifting branch offsets ([0d43d41](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/0d43d41317a846ec812a50e0c44b702030582a36))
+
 ## [1.1.0-dev.7](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.6...v1.1.0-dev.7) (2026-10-20)
 
 ### 🐛 Bug Fixes

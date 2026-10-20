@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-20T04:08:20",
-  "description": "## [1.1.0-dev.7](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.6...v1.1.0-dev.7) (2026-10-20)\n\n### 🐛 Bug Fixes\n\n* preserve branch targets in splash grace method ([13b3864](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/13b3864f8917cef4895b9392ead9d1ddd5aa8934))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.7/patches-1.1.0-dev.7.mpp",
+  "created_at": "2026-10-20T04:31:15",
+  "description": "## [1.1.0-dev.8](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.7...v1.1.0-dev.8) (2026-10-20)\n\n### ✨ New Features\n\n* measure setting.json HTTP latency and home tab milestones without shifting branch offsets ([0d43d41](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/0d43d41317a846ec812a50e0c44b702030582a36))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.8/patches-1.1.0-dev.8.mpp",
   "signature_download_url": "",
-  "version": "1.1.0-dev.7"
+  "version": "1.1.0-dev.8"
 }
