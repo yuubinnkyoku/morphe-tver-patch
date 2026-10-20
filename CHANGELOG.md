@@ -1,3 +1,14 @@
+## [1.1.0-dev.10](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.9...v1.1.0-dev.10) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* escape nested Android layout-class names in Kotlin smali strings ([148bdac](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/148bdacb66f88c56bbede4af1fddc1082eb9d5cc))
+* escape remaining ViewGroup nested parameter descriptor ([bccf508](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/bccf50862675d5c89ba9554738cb4f4956ebec5f))
+
+### ✨ New Features
+
+* experimental early home skeleton over splash while boot continues ([2592391](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/2592391d2d4150c61dc9f037a19ac08725c67128))
+
 ## [1.1.0-dev.9](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.8...v1.1.0-dev.9) (2026-10-20)
 
 ### ✨ New Features
