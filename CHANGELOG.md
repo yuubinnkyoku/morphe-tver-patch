@@ -1,3 +1,9 @@
+## [1.1.0-dev.12](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.11...v1.1.0-dev.12) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* correct int-to-float opcode in early home label Smali ([12ade22](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/12ade22e92cd3b1c001f3dfff9698b9f3bd22ddc))
+
 ## [1.1.0-dev.11](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.10...v1.1.0-dev.11) (2026-10-20)
 
 ### 🐛 Bug Fixes
