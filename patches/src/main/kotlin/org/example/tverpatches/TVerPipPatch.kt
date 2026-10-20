@@ -954,6 +954,27 @@ val tverPipPatch = bytecodePatch(
                     invoke-virtual {v0, v3}, Landroid/widget/CompoundButton;->setChecked(Z)V
                     invoke-virtual {v0, p0}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
                     invoke-virtual {v7, v0}, Landroid/view/ViewGroup;->addView(Landroid/view/View;)V
+                    # Experimental: use Firebase's own fetch interval cache on
+                    # subsequent launches instead of fetching every time.
+                    new-instance v0, Landroid/widget/Switch;
+                    invoke-direct {v0, p0}, Landroid/widget/Switch;-><init>(Landroid/content/Context;)V
+                    const-string v1, "Remote Configを5分キャッシュ（実験・次回起動から）"
+                    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+                    const/16 v1, 0x28
+                    invoke-virtual {v0, v1, v1, v1, v1}, Landroid/view/View;->setPadding(IIII)V
+                    const-string v1, "cache_remote_config_5m"
+                    invoke-virtual {v0, v1}, Landroid/view/View;->setTag(Ljava/lang/Object;)V
+                    const-string v1, "morphe.tver.settings"
+                    const/4 v2, 0x0
+                    invoke-virtual {p0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                    move-result-object v1
+                    const-string v2, "cache_remote_config_5m"
+                    const/4 v3, 0x0
+                    invoke-interface {v1, v2, v3}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                    move-result v3
+                    invoke-virtual {v0, v3}, Landroid/widget/CompoundButton;->setChecked(Z)V
+                    invoke-virtual {v0, p0}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
+                    invoke-virtual {v7, v0}, Landroid/view/ViewGroup;->addView(Landroid/view/View;)V
                     new-instance v0, Landroid/widget/Button;
                     invoke-direct {v0, p0}, Landroid/widget/Button;-><init>(Landroid/content/Context;)V
                     const-string v1, "起動ログを表示・コピー"
@@ -1028,8 +1049,20 @@ val tverPipPatch = bytecodePatch(
                     const-string v2, "skip_startup_animation"
                     invoke-virtual {v2, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
                     move-result v1
-                    if-eqz v1, :pip_setting
+                    if-eqz v1, :cache_setting
                     const-string v1, "skip_startup_animation"
+                    invoke-interface {v0, v1, p2}, Landroid/content/SharedPreferences${'$'}Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences${'$'}Editor;
+                    move-result-object v0
+                    invoke-interface {v0}, Landroid/content/SharedPreferences${'$'}Editor;->apply()V
+                    return-void
+                    :cache_setting
+                    invoke-virtual {p1}, Landroid/view/View;->getTag()Ljava/lang/Object;
+                    move-result-object v1
+                    const-string v2, "cache_remote_config_5m"
+                    invoke-virtual {v2, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+                    move-result v1
+                    if-eqz v1, :pip_setting
+                    const-string v1, "cache_remote_config_5m"
                     invoke-interface {v0, v1, p2}, Landroid/content/SharedPreferences${'$'}Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences${'$'}Editor;
                     move-result-object v0
                     invoke-interface {v0}, Landroid/content/SharedPreferences${'$'}Editor;->apply()V
@@ -1335,6 +1368,63 @@ val tverPipPatch = bytecodePatch(
                 move-result-object v0
                 return-object v0
             """.trimIndent()) })
+
+            // Warm-start experiment: leave Firebase Remote Config's standard
+            // fetchAndActivate flow intact, but let its normal cache suppress
+            // repeated network fetches for up to 300 seconds when opted in.
+            // IMPORTANT: disabled by default and never skips SDK/user consent.
+            val remoteConfigBuilderType =
+                "Ljp/hamitv/hamiand1/tver/core/common/domain/remoteconfig/data/RemoteConfigInteractor" +
+                    "$" + "Builder;"
+            check(vmCls.methods.none { it.name == "morpheApplyRemoteConfigCacheInterval" })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheApplyRemoteConfigCacheInterval",
+                listOf(ImmutableMethodParameter(remoteConfigBuilderType, null, null)), "V",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(8),
+            ).toMutable().apply { addInstructions(0, """
+                invoke-static {}, Lcom/google/firebase/FirebaseApp;->getInstance()Lcom/google/firebase/FirebaseApp;
+                move-result-object v0
+                invoke-virtual {v0}, Lcom/google/firebase/FirebaseApp;->getApplicationContext()Landroid/content/Context;
+                move-result-object v0
+                const-string v1, "morphe.tver.settings"
+                const/4 v2, 0x0
+                invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                move-result-object v0
+                const-string v1, "cache_remote_config_5m"
+                invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                move-result v0
+                if-eqz v0, :remote_cache_done
+                const-wide/16 v0, 0x12c
+                invoke-static {v0, v1}, Ljava/lang/Long;->valueOf(J)Ljava/lang/Long;
+                move-result-object v0
+                invoke-virtual {p0, v0}, $remoteConfigBuilderType->setMinimumFetchIntervalInSeconds(Ljava/lang/Long;)V
+                const-string v0, "REMOTE_CONFIG_5MIN_CACHE_ENABLED"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                :remote_cache_done
+                return-void
+            """.trimIndent()) })
+
+            // The app's own callback first sets a zero-second interval. Only
+            // after that original instruction, optionally change it to 300s.
+            // This is the builder stage, before fetchAndActivate() starts.
+            val remoteConfigLambdaType =
+                "Ljp/hamitv/hamiand1/tver/core/common/domain/remoteconfig/data/RemoteConfigInteractor" +
+                    "$" + "fetchAndActivate" + "$" + "2" + "$" + "1;"
+            val remoteLambdaCls = mutableClassDefBy(classDefBy(remoteConfigLambdaType))
+            val remoteLambdaMethod = remoteLambdaCls.methods.single {
+                it.name == "invoke" && it.parameterTypes.size == 1 &&
+                    it.parameterTypes[0].toString() == remoteConfigBuilderType
+            }
+            val remoteReturns = requireNotNull(remoteLambdaMethod.implementation).instructions
+                .mapIndexedNotNull { i, op -> i.takeIf { op.opcode == Opcode.RETURN_VOID } }
+            check(remoteReturns.size == 1) {
+                "Remote Config fetch callback unexpectedly has ${remoteReturns.size} returns"
+            }
+            remoteLambdaMethod.addInstructions(
+                remoteReturns.single(),
+                "invoke-static {p1}, $vmType->morpheApplyRemoteConfigCacheInterval($remoteConfigBuilderType)V",
+            )
 
             // No argument registers are read in the conditional bypass itself.
             // Calling the zero-arg helper avoids a v0 reference/boolean verifier
