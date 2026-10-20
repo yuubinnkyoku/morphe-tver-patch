@@ -975,6 +975,27 @@ val tverPipPatch = bytecodePatch(
                     invoke-virtual {v0, v3}, Landroid/widget/CompoundButton;->setChecked(Z)V
                     invoke-virtual {v0, p0}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
                     invoke-virtual {v7, v0}, Landroid/view/ViewGroup;->addView(Landroid/view/View;)V
+                    # Independent parallel init, default OFF.
+                    # subsequent launches instead of fetching every time.
+                    new-instance v0, Landroid/widget/Switch;
+                    invoke-direct {v0, p0}, Landroid/widget/Switch;-><init>(Landroid/content/Context;)V
+                    const-string v1, "Remote ConfigとTVerAppを並行初期化（実験・次回起動）"
+                    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+                    const/16 v1, 0x28
+                    invoke-virtual {v0, v1, v1, v1, v1}, Landroid/view/View;->setPadding(IIII)V
+                    const-string v1, "parallel_remote_tverapp"
+                    invoke-virtual {v0, v1}, Landroid/view/View;->setTag(Ljava/lang/Object;)V
+                    const-string v1, "morphe.tver.settings"
+                    const/4 v2, 0x0
+                    invoke-virtual {p0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                    move-result-object v1
+                    const-string v2, "parallel_remote_tverapp"
+                    const/4 v3, 0x0
+                    invoke-interface {v1, v2, v3}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                    move-result v3
+                    invoke-virtual {v0, v3}, Landroid/widget/CompoundButton;->setChecked(Z)V
+                    invoke-virtual {v0, p0}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
+                    invoke-virtual {v7, v0}, Landroid/view/ViewGroup;->addView(Landroid/view/View;)V
                     new-instance v0, Landroid/widget/Button;
                     invoke-direct {v0, p0}, Landroid/widget/Button;-><init>(Landroid/content/Context;)V
                     const-string v1, "起動ログを表示・コピー"
@@ -1061,8 +1082,20 @@ val tverPipPatch = bytecodePatch(
                     const-string v2, "cache_remote_config_5m"
                     invoke-virtual {v2, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
                     move-result v1
-                    if-eqz v1, :pip_setting
+                    if-eqz v1, :parallel_setting
                     const-string v1, "cache_remote_config_5m"
+                    invoke-interface {v0, v1, p2}, Landroid/content/SharedPreferences${'$'}Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences${'$'}Editor;
+                    move-result-object v0
+                    invoke-interface {v0}, Landroid/content/SharedPreferences${'$'}Editor;->apply()V
+                    return-void
+                    :parallel_setting
+                    invoke-virtual {p1}, Landroid/view/View;->getTag()Ljava/lang/Object;
+                    move-result-object v1
+                    const-string v2, "parallel_remote_tverapp"
+                    invoke-virtual {v2, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+                    move-result v1
+                    if-eqz v1, :pip_setting
+                    const-string v1, "parallel_remote_tverapp"
                     invoke-interface {v0, v1, p2}, Landroid/content/SharedPreferences${'$'}Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences${'$'}Editor;
                     move-result-object v0
                     invoke-interface {v0}, Landroid/content/SharedPreferences${'$'}Editor;->apply()V
@@ -1682,6 +1715,143 @@ val tverPipPatch = bytecodePatch(
             traceEntry(mainType, "onCreate", "MAIN_ON_CREATE")
             traceEntry(mainType, "onResume", "MAIN_ON_RESUME")
             traceEntry(mainType, "initTabs", "MAIN_INIT_TABS")
+
+            // Optional startup parallelism with a mandatory two-task join.
+            // Only the transport of setting.json is started early. Original
+            // SDK, profile and user initialization wait for Remote Config AND
+            // TVerApp success, regardless of completion order.
+            val parallelFrag = mutableClassDefBy(classDefBy(fragmentType))
+            val parallelNames = listOf(
+                "morpheParallelEnabled", "morpheRemoteReady",
+                "morpheTverAppReady", "morpheTverAppContinued",
+            )
+            check(parallelNames.none { name -> parallelFrag.fields.any { it.name == name } })
+            parallelNames.forEach { name ->
+                parallelFrag.fields.add(ImmutableField(
+                    fragmentType, name, "Z", AccessFlags.PRIVATE.value,
+                    null, null, null,
+                ).toMutableField())
+            }
+            fun addParallelMethod(name: String, regs: Int, body: String) {
+                check(parallelFrag.methods.none { it.name == name })
+                parallelFrag.methods.add(ImmutableMethod(
+                    fragmentType, name, emptyList(), "V",
+                    AccessFlags.PRIVATE.value, null, null,
+                    MutableMethodImplementation(regs),
+                ).toMutable().apply { addInstructions(0, body.trimIndent()) })
+            }
+            addParallelMethod("morpheStartTverAppEarly", 5, """
+                invoke-virtual {p0}, Landroidx/fragment/app/Fragment;->requireContext()Landroid/content/Context;
+                move-result-object v0
+                const-string v1, "morphe.tver.settings"
+                const/4 v2, 0x0
+                invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                move-result-object v0
+                const-string v1, "parallel_remote_tverapp"
+                invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                move-result v1
+                if-eqz v1, :parallel_start_done
+                iput-boolean v1, p0, $fragmentType->morpheParallelEnabled:Z
+                const-string v2, "TVER_APP_PARALLEL_INIT_START"
+                invoke-static {v2}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                invoke-direct {p0}, $fragmentType->initializeSdkPlugins()V
+                :parallel_start_done
+                return-void
+            """)
+            addParallelMethod("morpheRemoteConfigReleased", 3, """
+                iget-boolean v0, p0, $fragmentType->morpheParallelEnabled:Z
+                if-nez v0, :parallel_gate
+                invoke-direct {p0}, $fragmentType->initializeSdkPlugins()V
+                return-void
+                :parallel_gate
+                const/4 v1, 0x1
+                iput-boolean v1, p0, $fragmentType->morpheRemoteReady:Z
+                const-string v0, "TVER_APP_PARALLEL_REMOTE_READY"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                iget-boolean v0, p0, $fragmentType->morpheTverAppReady:Z
+                if-eqz v0, :parallel_release_done
+                invoke-direct {p0}, $fragmentType->tverAppInitSuccessProcess()V
+                :parallel_release_done
+                return-void
+            """)
+            check(parallelFrag.methods.none { it.name == "morpheCanContinueTverApp" })
+            parallelFrag.methods.add(ImmutableMethod(
+                fragmentType, "morpheCanContinueTverApp", emptyList(), "Z",
+                AccessFlags.PRIVATE.value, null, null,
+                MutableMethodImplementation(3),
+            ).toMutable().apply { addInstructions(0, """
+                iget-boolean v0, p0, $fragmentType->morpheParallelEnabled:Z
+                if-eqz v0, :parallel_continue_yes
+                const/4 v1, 0x1
+                iput-boolean v1, p0, $fragmentType->morpheTverAppReady:Z
+                iget-boolean v0, p0, $fragmentType->morpheRemoteReady:Z
+                if-eqz v0, :parallel_continue_no
+                iget-boolean v0, p0, $fragmentType->morpheTverAppContinued:Z
+                if-nez v0, :parallel_continue_no
+                iput-boolean v1, p0, $fragmentType->morpheTverAppContinued:Z
+                const-string v0, "TVER_APP_PARALLEL_JOINED"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                :parallel_continue_yes
+                const/4 v0, 0x1
+                return v0
+                :parallel_continue_no
+                const/4 v0, 0x0
+                return v0
+            """.trimIndent()) })
+            val createViewMethod = parallelFrag.methods.single {
+                it.name == "onCreateView" && it.parameterTypes.size == 3
+            }
+            val createOps = requireNotNull(createViewMethod.implementation).instructions.toList()
+            val updateCalls = createOps.indices.filter { i ->
+                val ref = (createOps[i] as? ReferenceInstruction)?.reference as? MethodReference
+                ref?.name == "updateAppRemoteConfig" &&
+                    ref.definingClass == vmType &&
+                    createOps[i].opcode == Opcode.INVOKE_VIRTUAL
+            }
+            check(updateCalls.size == 1) {
+                "Expected exactly one updateAppRemoteConfig call: ${updateCalls.size}"
+            }
+            // updateAppRemoteConfig returns void; injection cannot break move-result.
+            createViewMethod.addInstructions(
+                updateCalls.single() + 1,
+                "invoke-direct {p0}, $fragmentType->morpheStartTverAppEarly()V",
+            )
+            val remoteReadyMethod = parallelFrag.methods.single {
+                it.name == "onCreateView" + "$" + "lambda" + "$" + "0"
+            }
+            val gateOps = requireNotNull(remoteReadyMethod.implementation).instructions.toList()
+            val initCalls = gateOps.indices.filter { i ->
+                val inst = gateOps[i]
+                val ref = (inst as? ReferenceInstruction)?.reference as? MethodReference
+                inst.opcode == Opcode.INVOKE_DIRECT && ref?.definingClass == fragmentType &&
+                    ref.name == "initializeSdkPlugins"
+            }
+            check(initCalls.size == 1) {
+                "Expected one initializeSdkPlugins in remote callback: ${initCalls.size}"
+            }
+            val oldInit = gateOps[initCalls.single()] as Instruction35c
+            requireNotNull(remoteReadyMethod.implementation as? MutableMethodImplementation)
+                .replaceInstruction(
+                    initCalls.single(),
+                    BuilderInstruction35c(
+                        Opcode.INVOKE_DIRECT, 1, oldInit.registerC, 0, 0, 0, 0,
+                        ImmutableMethodReference(
+                            fragmentType, "morpheRemoteConfigReleased", emptyList(), "V",
+                        ),
+                    ),
+                )
+            val successMethod = parallelFrag.methods.single {
+                it.name == "tverAppInitSuccessProcess" && it.parameterTypes.isEmpty()
+            }
+            check(requireNotNull(successMethod.implementation).registerCount >= 2)
+            successMethod.addInstructions(0, """
+                invoke-direct {p0}, $fragmentType->morpheCanContinueTverApp()Z
+                move-result v0
+                if-nez v0, :morphe_app_success_original
+                return-void
+                :morphe_app_success_original
+                nop
+            """.trimIndent())
 
             // EXPERIMENTAL, DISPLAY-ONLY: while the genuine SDK/consent boot
             // sequence runs unchanged, show a noninteractive home-like skeleton
