@@ -1198,6 +1198,71 @@ val tverPipPatch = bytecodePatch(
             // for the extra (up to 1000ms) SplashGrace when skip is enabled.
             val vmType = "Ljp/hamitv/hamiand1/tver/ui/fragments/splash/SplashViewModel;"
             val vmCls = mutableClassDefBy(classDefBy(vmType))
+
+            // Process-local, synchronized, payload-free startup event recorder.
+            check(vmCls.fields.none { it.name == "morpheStartupBuffer" || it.name == "morpheStartupZeroMs" })
+            vmCls.fields.add(ImmutableField(
+                vmType, "morpheStartupBuffer", "Ljava/lang/StringBuffer;",
+                AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
+                null, null, null,
+            ).toMutableField())
+            vmCls.fields.add(ImmutableField(
+                vmType, "morpheStartupZeroMs", "J",
+                AccessFlags.PRIVATE.value or AccessFlags.STATIC.value,
+                null, null, null,
+            ).toMutableField())
+            check(vmCls.methods.none { it.name == "morpheLogStartup" || it.name == "morpheGetStartupLog" })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheLogStartup",
+                listOf(ImmutableMethodParameter("Ljava/lang/String;", null, null)), "V",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value or AccessFlags.SYNCHRONIZED.value,
+                null, null, MutableMethodImplementation(10),
+            ).toMutable().apply { addInstructions(0, """
+                sget-object v0, $vmType->morpheStartupBuffer:Ljava/lang/StringBuffer;
+                if-nez v0, :buffer_ready
+                new-instance v0, Ljava/lang/StringBuffer;
+                invoke-direct {v0}, Ljava/lang/StringBuffer;-><init>()V
+                sput-object v0, $vmType->morpheStartupBuffer:Ljava/lang/StringBuffer;
+                invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
+                move-result-wide v1
+                sput-wide v1, $vmType->morpheStartupZeroMs:J
+                :buffer_ready
+                invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
+                move-result-wide v1
+                sget-wide v3, $vmType->morpheStartupZeroMs:J
+                sub-long/2addr v1, v3
+                new-instance v5, Ljava/lang/StringBuilder;
+                invoke-direct {v5}, Ljava/lang/StringBuilder;-><init>()V
+                const-string v6, "+"
+                invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+                invoke-virtual {v5, v1, v2}, Ljava/lang/StringBuilder;->append(J)Ljava/lang/StringBuilder;
+                const-string v6, " ms  "
+                invoke-virtual {v5, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+                invoke-virtual {v5, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+                invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+                move-result-object v6
+                invoke-virtual {v0, v6}, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+                const-string v7, "\n"
+                invoke-virtual {v0, v7}, Ljava/lang/StringBuffer;->append(Ljava/lang/String;)Ljava/lang/StringBuffer;
+                const-string v7, "MorpheStartup"
+                invoke-static {v7, v6}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                return-void
+            """.trimIndent()) })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheGetStartupLog", emptyList(), "Ljava/lang/String;",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value or AccessFlags.SYNCHRONIZED.value,
+                null, null, MutableMethodImplementation(2),
+            ).toMutable().apply { addInstructions(0, """
+                sget-object v0, $vmType->morpheStartupBuffer:Ljava/lang/StringBuffer;
+                if-nez v0, :ready
+                const-string v0, "この起動ではログがまだ記録されていません。"
+                return-object v0
+                :ready
+                invoke-virtual {v0}, Ljava/lang/StringBuffer;->toString()Ljava/lang/String;
+                move-result-object v0
+                return-object v0
+            """.trimIndent()) })
+
             val grace = vmCls.methods.single {
                 it.name == "appliesHomeLoadGrace" && it.parameterTypes.isEmpty()
             }
@@ -1207,14 +1272,57 @@ val tverPipPatch = bytecodePatch(
             grace.addInstructions(0, """
                 sget-boolean v0, $splashType->morpheStartupSkipCached:Z
                 if-eqz v0, :morphe_original_grace
-                const-string p0, "MorpheStartup"
                 const-string v0, "HOME_GRACE_SKIPPED"
-                invoke-static {p0, v0}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
                 const/4 v0, 0x0
                 return v0
                 :morphe_original_grace
                 nop
             """.trimIndent())
+
+            // The existing PiP code is unchanged. Only method-entry milestones
+            // are inserted; local register v0 is verified for TVer 7.2.1.
+            fun traceEntry(descriptor: String, name: String, event: String) {
+                val klass = mutableClassDefBy(classDefBy(descriptor))
+                val method = klass.methods.single { it.name == name }
+                check(requireNotNull(method.implementation).registerCount > method.parameterTypes.size + 1) {
+                    "Startup tracing requires a local register: $descriptor->$name"
+                }
+                method.addInstructions(0, """
+                    const-string v0, "$event"
+                    invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                """.trimIndent())
+            }
+            val fragmentType = "Ljp/hamitv/hamiand1/tver/ui/fragments/splash/SplashFragment;"
+            listOf(
+                "onViewCreated" to "SPLASH_VIEW_CREATED",
+                "initializeSdkPlugins" to "SDK_PLUGIN_INIT_START",
+                "tverAppInitSuccessProcess" to "TVER_APP_INIT_SUCCESS",
+                "onCdnStartConfigUrlResponse" to "CDN_CONFIG_RECEIVED",
+                "onCdnStartConfigUrlError" to "CDN_CONFIG_ERROR",
+                "onSdkAgreementVersionResponse" to "SDK_AGREEMENT_RECEIVED",
+                "onSdkAgreementVersionError" to "SDK_AGREEMENT_ERROR",
+                "onSdkInitResponse" to "SDK_INIT_SUCCESS_USER_INIT_START",
+                "onSdkInitError" to "SDK_INIT_ERROR",
+                "transitionToHome" to "TRANSITION_TO_HOME_REQUESTED",
+            ).forEach { (name, event) -> traceEntry(fragmentType, name, event) }
+            traceEntry(vmType, "callUserInit", "USER_INIT_CALL")
+            traceEntry(vmType, "onSessionReady", "SESSION_READY_SIGNAL")
+            traceEntry(vmType, "onPrivacyPolicyGatePassed", "PRIVACY_GATE_PASSED")
+            traceEntry(vmType, "awaitHomeLandingWithinGrace", "HOME_LANDING_GRACE_WAIT")
+            traceEntry(vmType, "appliesHomeLoadGrace", "HOME_GRACE_CHECK")
+            traceEntry(
+                fragmentType,
+                "onSdkInitResponse" + "$" + "lambda" + "$" + "0",
+                "USER_INIT_RESULT_PRIVACY_FETCH_START",
+            )
+            val privacyCallback = fragmentType.dropLast(1) + "$" + "onSdkInitResponse" + "$" + "1" + "$" + "1;"
+            traceEntry(privacyCallback, "onSuccess", "PRIVACY_SETTINGS_SUCCESS")
+            traceEntry(privacyCallback, "onError", "PRIVACY_SETTINGS_ERROR")
+            val mainType = "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;"
+            traceEntry(mainType, "onCreate", "MAIN_ON_CREATE")
+            traceEntry(mainType, "onResume", "MAIN_ON_RESUME")
+            traceEntry(mainType, "initTabs", "MAIN_INIT_TABS")
         }
 
     }
