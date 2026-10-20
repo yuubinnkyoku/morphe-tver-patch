@@ -1,3 +1,9 @@
+## [1.1.0-dev.22](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.21...v1.1.0-dev.22) (2026-10-20)
+
+### ✨ New Features
+
+* trace SDK browser profile creation request behind slow startup ([1913ab3](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/1913ab346413b72877fd35ca7d0e35d8fe08243f))
+
 ## [1.1.0-dev.21](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.20...v1.1.0-dev.21) (2026-10-20)
 
 ### 🐛 Bug Fixes
