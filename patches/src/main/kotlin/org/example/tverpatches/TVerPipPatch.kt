@@ -1361,18 +1361,31 @@ val tverPipPatch = bytecodePatch(
                 nop
             """.trimIndent())
 
-            // The existing PiP code is unchanged. Only method-entry milestones
-            // are inserted; local register v0 is verified for TVer 7.2.1.
+            // Safe instrumentation: each target method receives ONLY a
+            // zero-argument invoke-static. It never clobbers locals (especially
+            // v0, which can change verifier type across existing control flow).
+            // The separate helper owns its private scratch register.
+            var milestoneId = 0
             fun traceEntry(descriptor: String, name: String, event: String) {
-                val klass = mutableClassDefBy(classDefBy(descriptor))
-                val method = klass.methods.single { it.name == name }
-                check(requireNotNull(method.implementation).registerCount > method.parameterTypes.size + 1) {
-                    "Startup tracing requires a local register: $descriptor->$name"
-                }
-                method.addInstructions(0, """
+                val helperName = "morpheStartupMilestone" + milestoneId++
+                check(vmCls.methods.none { it.name == helperName })
+                vmCls.methods.add(ImmutableMethod(
+                    vmType, helperName, emptyList(), "V",
+                    AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                    null, null, MutableMethodImplementation(1),
+                ).toMutable().apply { addInstructions(0, """
                     const-string v0, "$event"
                     invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
-                """.trimIndent())
+                    return-void
+                """.trimIndent()) })
+                val klass = mutableClassDefBy(classDefBy(descriptor))
+                val method = klass.methods.single { it.name == name }
+                check(requireNotNull(method.implementation).instructions.any()) {
+                    "No bytecode for startup milestone: $descriptor->$name"
+                }
+                method.addInstructions(
+                    0, "invoke-static {}, $vmType->$helperName()V"
+                )
             }
             val fragmentType = "Ljp/hamitv/hamiand1/tver/ui/fragments/splash/SplashFragment;"
             listOf(
