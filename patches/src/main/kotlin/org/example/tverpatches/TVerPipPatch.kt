@@ -1741,6 +1741,64 @@ val tverPipPatch = bytecodePatch(
             traceSdkInternal("h", listOf(sdkProfileType),
                 "SDK_INTERNAL_PROFILE_CALLBACK_DISPATCHED")
 
+            // SDK RetryInterceptor retries ONLY HTTP 503 responses; the first
+            // two attempts each sleep 1000ms. Preserve original sleep and
+            // interruption behavior, instrument the exact sleep call only.
+            // Logs are intentionally payload/URL/status-body free. This
+            // interceptor is also used by other SDK API clients.
+            val retryType = "Ljp/tver/appsdk/core/RetryInterceptor;"
+            val retryCls = mutableClassDefBy(classDefBy(retryType))
+            val retryMethod = retryCls.methods.single {
+                it.name == "intercept" &&
+                    it.parameterTypes.map { type -> type.toString() } ==
+                        listOf("Lokhttp3/Interceptor" + "$" + "Chain;") &&
+                    it.returnType == "Lokhttp3/Response;"
+            }
+            val retryInsns = requireNotNull(retryMethod.implementation).instructions.toList()
+            val sleepMatches = retryInsns.indices.filter { i ->
+                val op = retryInsns[i]
+                val ref = (op as? ReferenceInstruction)?.reference as? MethodReference
+                op.opcode == Opcode.INVOKE_STATIC &&
+                    ref?.definingClass == "Ljava/lang/Thread;" &&
+                    ref.name == "sleep" && ref.parameterTypes.map { it.toString() } == listOf("J") &&
+                    ref.returnType == "V"
+            }
+            check(sleepMatches.size == 1) {
+                "Expected exactly one RetryInterceptor Thread.sleep(long); found " +
+                    sleepMatches.size
+            }
+            check(vmCls.methods.none { it.name == "morpheRecordSdk503RetrySleep" })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheRecordSdk503RetrySleep",
+                listOf(ImmutableMethodParameter("J", null, null)), "V",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(3),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "SDK_HTTP_503_RETRY_SLEEP_BEGIN"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                invoke-static {p0, p1}, Ljava/lang/Thread;->sleep(J)V
+                const-string v0, "SDK_HTTP_503_RETRY_SLEEP_END"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                return-void
+            """.trimIndent()) })
+            val oldSleep = retryInsns[sleepMatches.single()] as Instruction35c
+            check(oldSleep.registerCount == 2) {
+                "RetryInterceptor sleep expects one long (two registers)"
+            }
+            requireNotNull(retryMethod.implementation as? MutableMethodImplementation)
+                .replaceInstruction(
+                    sleepMatches.single(),
+                    BuilderInstruction35c(
+                        Opcode.INVOKE_STATIC, 2,
+                        oldSleep.registerC, oldSleep.registerD, 0, 0, 0,
+                        ImmutableMethodReference(
+                            vmType, "morpheRecordSdk503RetrySleep",
+                            listOf("J"), "V",
+                        ),
+                    ),
+                )
+
+
             // Network/suspension diagnostics: no behavior changes, no request
             // payloads, credentials, or result values are logged.
             // UserInitRepositoryImpl dispatches getUserInit() to Dispatchers.IO.
