@@ -1,3 +1,13 @@
+## [1.1.0-dev.27](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.26...v1.1.0-dev.27) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* preserve clock-sync bytecode indices before prepending trace ([ae20233](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/ae2023320aa1371ee17575191d0d3d5e5cbfd75a))
+
+### ✨ New Features
+
+* trace SDK server-time sync attempts, HTTP latency and retry sleeps ([7e0fb3d](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/7e0fb3dc79f47c5b3ce745780aaf0db28429a347))
+
 ## [1.1.0-dev.26](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.25...v1.1.0-dev.26) (2026-10-20)
 
 ### ✨ New Features
