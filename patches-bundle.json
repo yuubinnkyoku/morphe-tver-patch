@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-20T09:36:29",
-  "description": "## [1.1.0-dev.15](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.14...v1.1.0-dev.15) (2026-10-20)\n\n### 🐛 Bug Fixes\n\n* per-fragment home frame trace; instrument SDK and CDN request/callback timing ([11f49f6](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/11f49f62c87caa433fc2513286a0d22eab3ebd06))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.15/patches-1.1.0-dev.15.mpp",
+  "created_at": "2026-10-20T11:05:12",
+  "description": "## [1.1.0-dev.16](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.15...v1.1.0-dev.16) (2026-10-20)\n\n### 🐛 Bug Fixes\n\n* arm parallel startup before remote config can complete synchronously ([84c6ef3](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/84c6ef3db4f7f5c02b0397ac64498e22bc62e7a4))\n\n### ✨ New Features\n\n* optional parallel Remote Config + TVerApp init with SDK startup barrier ([7975bab](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/7975bab4ea5c218ebb3a8ddbe9cd9bbc0febb956))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.16/patches-1.1.0-dev.16.mpp",
   "signature_download_url": "",
-  "version": "1.1.0-dev.15"
+  "version": "1.1.0-dev.16"
 }

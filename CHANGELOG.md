@@ -1,3 +1,13 @@
+## [1.1.0-dev.16](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.15...v1.1.0-dev.16) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* arm parallel startup before remote config can complete synchronously ([84c6ef3](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/84c6ef3db4f7f5c02b0397ac64498e22bc62e7a4))
+
+### ✨ New Features
+
+* optional parallel Remote Config + TVerApp init with SDK startup barrier ([7975bab](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/7975bab4ea5c218ebb3a8ddbe9cd9bbc0febb956))
+
 ## [1.1.0-dev.15](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.14...v1.1.0-dev.15) (2026-10-20)
 
 ### 🐛 Bug Fixes
