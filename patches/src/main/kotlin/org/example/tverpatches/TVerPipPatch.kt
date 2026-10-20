@@ -1741,6 +1741,73 @@ val tverPipPatch = bytecodePatch(
             traceSdkInternal("h", listOf(sdkProfileType),
                 "SDK_INTERNAL_PROFILE_CALLBACK_DISPATCHED")
 
+            // The independent jp.co.tver.sdk initialization fetches its
+            // *own* CDN /setting.json through b.n$a.a(String), separate from
+            // TVerApp.init's earlier settings HTTP request. Instrument that
+            // precise call to determine if its cold network fetch is the
+            // variable ~2-second bottleneck. Keep original OkHttp semantics.
+            val sdkCdnConfigType = "Lb/n" + "$" + "a;"
+            val sdkCdnConfigCls = mutableClassDefBy(classDefBy(sdkCdnConfigType))
+            val sdkCdnConfigMethod = sdkCdnConfigCls.methods.single {
+                it.name == "a" &&
+                    it.parameterTypes.map { p -> p.toString() } == listOf("Ljava/lang/String;") &&
+                    it.returnType == "Lb/n;"
+            }
+            val sdkCdnOps = requireNotNull(sdkCdnConfigMethod.implementation).instructions.toList()
+            val sdkCdnExecuteMatches = sdkCdnOps.indices.filter { i ->
+                val instruction = sdkCdnOps[i]
+                val ref = (instruction as? ReferenceInstruction)?.reference as? MethodReference
+                instruction.opcode == Opcode.INVOKE_INTERFACE &&
+                    ref?.definingClass == "Lokhttp3/Call;" &&
+                    ref.name == "execute" &&
+                    ref.parameterTypes.isEmpty() &&
+                    ref.returnType == "Lokhttp3/Response;"
+            }
+            check(sdkCdnExecuteMatches.size == 1) {
+                "Expected exactly one SDK CDN setting.json Call.execute(), got " +
+                    sdkCdnExecuteMatches.size
+            }
+            val sdkCdnExecuteWrapperName = "morpheExecuteSdkCdnSettingRequest"
+            check(vmCls.methods.none { it.name == sdkCdnExecuteWrapperName })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, sdkCdnExecuteWrapperName,
+                listOf(ImmutableMethodParameter("Lokhttp3/Call;", null, null)),
+                "Lokhttp3/Response;",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(2),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "SDK_CDN_SETTINGS_HTTP_START"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                invoke-interface {p0}, Lokhttp3/Call;->execute()Lokhttp3/Response;
+                move-result-object v0
+                invoke-static {}, $vmType->morpheSdkCdnSettingsHttpDone()V
+                return-object v0
+            """.trimIndent()) })
+            check(vmCls.methods.none { it.name == "morpheSdkCdnSettingsHttpDone" })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheSdkCdnSettingsHttpDone", emptyList(), "V",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(1),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "SDK_CDN_SETTINGS_HTTP_END"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                return-void
+            """.trimIndent()) })
+            val oldSdkCdnExecute = sdkCdnOps[sdkCdnExecuteMatches.single()] as Instruction35c
+            check(oldSdkCdnExecute.registerCount == 1)
+            requireNotNull(
+                sdkCdnConfigMethod.implementation as? MutableMethodImplementation
+            ).replaceInstruction(
+                sdkCdnExecuteMatches.single(),
+                BuilderInstruction35c(
+                    Opcode.INVOKE_STATIC, 1, oldSdkCdnExecute.registerC, 0, 0, 0, 0,
+                    ImmutableMethodReference(
+                        vmType, sdkCdnExecuteWrapperName,
+                        listOf("Lokhttp3/Call;"), "Lokhttp3/Response;",
+                    ),
+                ),
+            )
+
             // The SDK's b.l.b(profile) conditionally registers a missing
             // browser identifier at /v2/api/platform_users/browser/create.
             // Replace ONLY its sync f.a.a(request) call with an instrumented
