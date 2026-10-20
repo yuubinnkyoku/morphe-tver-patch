@@ -1870,6 +1870,68 @@ val tverPipPatch = bytecodePatch(
                 )
 
 
+            // Diagnose *where* user/init stalls inside OkHttp's networking.
+            // RetryInterceptor.proceed() includes DNS, TCP, TLS, server headers.
+            // ConnectInterceptor entry is before DNS/connection selection;
+            // CallServerInterceptor entry is after connection establishment,
+            // just before request/response I/O. Neither changes transport.
+            val userInitTransportChainType = "Lokhttp3/Interceptor" + "$" + "Chain;"
+            val userInitTransportStageProbes = listOf(
+                Triple(
+                    "Lokhttp3/internal/connection/ConnectInterceptor;",
+                    "morpheUserInitConnectPhase",
+                    "USER_INIT_CONNECT_PHASE_ENTER",
+                ),
+                Triple(
+                    "Lokhttp3/internal/http/CallServerInterceptor;",
+                    "morpheUserInitServerPhase",
+                    "USER_INIT_SERVER_PHASE_ENTER",
+                ),
+            )
+            userInitTransportStageProbes.forEach { (classType, helperName, event) ->
+                val transportClass = mutableClassDefBy(classDefBy(classType))
+                val interceptMethods = transportClass.methods.filter { method ->
+                    method.name == "intercept" &&
+                        method.parameterTypes.map { it.toString() } ==
+                        listOf(userInitTransportChainType) &&
+                        method.returnType == "Lokhttp3/Response;"
+                }
+                check(interceptMethods.size == 1) {
+                    "Missing/ambiguous OkHttp network interceptor $classType: " +
+                        interceptMethods.size
+                }
+                check(vmCls.methods.none { it.name == helperName })
+                vmCls.methods.add(ImmutableMethod(
+                    vmType, helperName,
+                    listOf(ImmutableMethodParameter(userInitTransportChainType, null, null)),
+                    "V", AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                    null, null, MutableMethodImplementation(3),
+                ).toMutable().apply { addInstructions(0, """
+                    invoke-interface {p0}, Lokhttp3/Interceptor$Chain;->request()Lokhttp3/Request;
+                    move-result-object v0
+                    invoke-virtual {v0}, Lokhttp3/Request;->url()Lokhttp3/HttpUrl;
+                    move-result-object v0
+                    invoke-virtual {v0}, Lokhttp3/HttpUrl;->encodedPath()Ljava/lang/String;
+                    move-result-object v0
+                    const-string v1, "user/api/v1/init"
+                    invoke-virtual {v0, v1}, Ljava/lang/String;->endsWith(Ljava/lang/String;)Z
+                    move-result v0
+                    if-eqz v0, :transport_probe_done
+                    const-string v0, "$event"
+                    invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                    :transport_probe_done
+                    return-void
+                """.trimIndent()) })
+                val intercept = interceptMethods.single()
+                check(requireNotNull(intercept.implementation).instructions.isNotEmpty()) {
+                    "OkHttp network interceptor has no bytecode: $classType"
+                }
+                // No original registers or exception handlers are modified.
+                intercept.addInstructions(
+                    0, "invoke-static {p1}, $vmType->$helperName($userInitTransportChainType)V",
+                )
+            }
+
             // SDK RetryInterceptor retries ONLY HTTP 503 responses; the first
             // two attempts each sleep 1000ms. Preserve original sleep and
             // interruption behavior, instrument the exact sleep call only.
