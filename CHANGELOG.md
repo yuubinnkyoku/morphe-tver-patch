@@ -1,3 +1,9 @@
+## [1.1.0-dev.26](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.25...v1.1.0-dev.26) (2026-10-20)
+
+### ✨ New Features
+
+* instrument OkHttp DNS TCP TLS milestones for slow user/init connection ([817ce88](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/817ce88995aa41b0e504f63cf6120e0e8bdad19c))
+
 ## [1.1.0-dev.25](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.24...v1.1.0-dev.25) (2026-10-20)
 
 ### ✨ New Features
