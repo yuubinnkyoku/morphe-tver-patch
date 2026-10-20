@@ -1404,7 +1404,12 @@ val tverPipPatch = bytecodePatch(
             traceEntry(vmType, "onSessionReady", "SESSION_READY_SIGNAL")
             traceEntry(vmType, "onPrivacyPolicyGatePassed", "PRIVACY_GATE_PASSED")
             traceEntry(vmType, "awaitHomeLandingWithinGrace", "HOME_LANDING_GRACE_WAIT")
-            traceEntry(vmType, "appliesHomeLoadGrace", "HOME_GRACE_CHECK")
+            // IMPORTANT: appliesHomeLoadGrace() already has a label-based conditional
+            // inserted above. Prepending another instruction with addInstructions(0)
+            // after that insertion breaks its encoded branch offset in Morphe
+            // (Android VerifyError: target dex pc is not at instruction start).
+            // Never call traceEntry on this method after the conditional injection.
+            // HOME_GRACE_SKIPPED is still recorded by the bypass helper.
             traceEntry(
                 fragmentType,
                 "onSdkInitResponse" + "$" + "lambda" + "$" + "0",
