@@ -1,3 +1,9 @@
+## [1.1.0-dev.15](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.14...v1.1.0-dev.15) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* per-fragment home frame trace; instrument SDK and CDN request/callback timing ([11f49f6](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/11f49f62c87caa433fc2513286a0d22eab3ebd06))
+
 ## [1.1.0-dev.14](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.13...v1.1.0-dev.14) (2026-10-20)
 
 ### ✨ New Features
