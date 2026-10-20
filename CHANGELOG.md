@@ -1,3 +1,15 @@
+## [1.1.0-dev.24](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.23...v1.1.0-dev.24) (2026-10-20)
+
+### 🐛 Bug Fixes
+
+* escape interceptor Chain nested-class descriptor in transport milestone ([19ed544](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/19ed5440d68a13fc7be53e3a4511099fb1661cee))
+* interpolate OkHttp Chain method descriptor using existing type constant ([982e446](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/982e446b0286ad5f0c30eac189b6edbb897b1a54))
+* remove duplicated malformed Smali source trailing after patch closure ([a2a0998](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/a2a09983ef425caadd6469d0dfd9a0005ae94d96))
+
+### ✨ New Features
+
+* distinguish user/init connection setup from server response waiting ([5c399eb](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5c399eb73e6991f7cebb9c1fc451d1235835c5fa))
+
 ## [1.1.0-dev.23](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.22...v1.1.0-dev.23) (2026-10-20)
 
 ### ✨ New Features
