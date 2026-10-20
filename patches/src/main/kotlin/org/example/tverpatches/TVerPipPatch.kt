@@ -1861,9 +1861,6 @@ val tverPipPatch = bytecodePatch(
             }
             addClockLogHelper("morpheTimeSyncAttempt",
                 "SDK_CURRENT_TIME_SYNC_ATTEMPT")
-            sdkClockMethod.addInstructions(
-                0, "invoke-static {}, $vmType->morpheTimeSyncAttempt()V",
-            )
             check(vmCls.methods.none { it.name == "morpheRunSdkCurrentTimeApi" })
             vmCls.methods.add(ImmutableMethod(
                 vmType, "morpheRunSdkCurrentTimeApi",
@@ -1921,6 +1918,12 @@ val tverPipPatch = bytecodePatch(
                         listOf("J"), "V",
                     ),
                 ),
+            )
+
+            // Prepend entry instrumentation AFTER fixed-index replacements:
+            // inserting first would shift original instruction indices by one.
+            sdkClockMethod.addInstructions(
+                0, "invoke-static {}, $vmType->morpheTimeSyncAttempt()V",
             )
 
             // TVer SDK b.t holds a 24-hour cached salt in tversdk_prefs.
