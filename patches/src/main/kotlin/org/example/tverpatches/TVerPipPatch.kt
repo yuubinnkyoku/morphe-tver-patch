@@ -1741,6 +1741,68 @@ val tverPipPatch = bytecodePatch(
             traceSdkInternal("h", listOf(sdkProfileType),
                 "SDK_INTERNAL_PROFILE_CALLBACK_DISPATCHED")
 
+            // The SDK's b.l.b(profile) conditionally registers a missing
+            // browser identifier at /v2/api/platform_users/browser/create.
+            // Replace ONLY its sync f.a.a(request) call with an instrumented
+            // static wrapper of the same 3-code-unit instruction length.
+            // The wrapper performs the exact original request, without
+            // logging identifiers, request paths, headers or response body.
+            val browserReqType = "Lf/a" + "$" + "a;"
+            val browserResType = "Lf/a" + "$" + "b;"
+            val browserCreateMethod = sdkInternalCls.methods.single {
+                it.name == "b" &&
+                    it.parameterTypes.map { t -> t.toString() } == listOf(sdkProfileType) &&
+                    it.returnType == "V"
+            }
+            val browserOps = requireNotNull(browserCreateMethod.implementation).instructions.toList()
+            val browserCallIndices = browserOps.indices.filter { i ->
+                val inst = browserOps[i]
+                val ref = (inst as? ReferenceInstruction)?.reference as? MethodReference
+                inst.opcode == Opcode.INVOKE_VIRTUAL &&
+                    ref?.definingClass == "Lf/a;" &&
+                    ref.name == "a" &&
+                    ref.parameterTypes.map { t -> t.toString() } == listOf(browserReqType) &&
+                    ref.returnType == browserResType
+            }
+            check(browserCallIndices.size == 1) {
+                "Expected exactly one browser/create request in SDK profile setup; got " +
+                    browserCallIndices.size
+            }
+            check(vmCls.methods.none { it.name == "morpheTraceBrowserCreateCall" })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheTraceBrowserCreateCall",
+                listOf(
+                    ImmutableMethodParameter("Lf/a;", null, null),
+                    ImmutableMethodParameter(browserReqType, null, null),
+                ),
+                browserResType,
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(4),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "SDK_BROWSER_CREATE_HTTP_START"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                invoke-virtual {p0, p1}, Lf/a;->a($browserReqType)$browserResType
+                move-result-object v0
+                const-string v1, "SDK_BROWSER_CREATE_HTTP_END"
+                invoke-static {v1}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                return-object v0
+            """.trimIndent()) })
+            val originalBrowserCall = browserOps[browserCallIndices.single()] as Instruction35c
+            check(originalBrowserCall.registerCount == 2)
+            requireNotNull(browserCreateMethod.implementation as? MutableMethodImplementation)
+                .replaceInstruction(
+                    browserCallIndices.single(),
+                    BuilderInstruction35c(
+                        Opcode.INVOKE_STATIC, 2,
+                        originalBrowserCall.registerC, originalBrowserCall.registerD, 0, 0, 0,
+                        ImmutableMethodReference(
+                            vmType, "morpheTraceBrowserCreateCall",
+                            listOf("Lf/a;", browserReqType), browserResType,
+                        ),
+                    ),
+                )
+
+
             // SDK RetryInterceptor retries ONLY HTTP 503 responses; the first
             // two attempts each sleep 1000ms. Preserve original sleep and
             // interruption behavior, instrument the exact sleep call only.
