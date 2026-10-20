@@ -1808,6 +1808,75 @@ val tverPipPatch = bytecodePatch(
                 ),
             )
 
+
+            // TVer SDK b.t holds a 24-hour cached salt in tversdk_prefs.
+            // When absent/expired, a(String cdnEndpoint, Context) synchronously
+            // fetches /data/string/s.json. This happens *between* SDK CDN
+            // settings fetch and PROFILE_SETUP_START in b.l.a(Context).
+            // Instrument only the actual Call.execute(), not the cached path.
+            val sdkSaltType = "Lb/t;"
+            val sdkSaltCls = mutableClassDefBy(classDefBy(sdkSaltType))
+            val sdkSaltFetch = sdkSaltCls.methods.single {
+                it.name == "a" &&
+                    it.parameterTypes.map { type -> type.toString() } ==
+                        listOf("Ljava/lang/String;", "Landroid/content/Context;") &&
+                    it.returnType == "Ljava/lang/String;"
+            }
+            val sdkSaltOps = requireNotNull(sdkSaltFetch.implementation).instructions.toList()
+            val sdkSaltExecuteCalls = sdkSaltOps.indices.filter { i ->
+                val instruction = sdkSaltOps[i]
+                val ref = (instruction as? ReferenceInstruction)?.reference as? MethodReference
+                instruction.opcode == Opcode.INVOKE_INTERFACE &&
+                    ref?.definingClass == "Lokhttp3/Call;" &&
+                    ref.name == "execute" &&
+                    ref.parameterTypes.isEmpty() &&
+                    ref.returnType == "Lokhttp3/Response;"
+            }
+            check(sdkSaltExecuteCalls.size == 1) {
+                "Expected one SDK salt HTTP Call.execute(), got " +
+                    sdkSaltExecuteCalls.size
+            }
+            check(vmCls.methods.none { it.name == "morpheExecuteSdkSaltRequest" })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheExecuteSdkSaltRequest",
+                listOf(ImmutableMethodParameter("Lokhttp3/Call;", null, null)),
+                "Lokhttp3/Response;",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(2),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "SDK_SALT_HTTP_START"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                invoke-interface {p0}, Lokhttp3/Call;->execute()Lokhttp3/Response;
+                move-result-object v0
+                invoke-static {}, $vmType->morpheSdkSaltRequestCompleted()V
+                return-object v0
+            """.trimIndent()) })
+            check(vmCls.methods.none { it.name == "morpheSdkSaltRequestCompleted" })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheSdkSaltRequestCompleted", emptyList(), "V",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(1),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "SDK_SALT_HTTP_END"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                return-void
+            """.trimIndent()) })
+            val originalSaltCall =
+                sdkSaltOps[sdkSaltExecuteCalls.single()] as Instruction35c
+            check(originalSaltCall.registerCount == 1)
+            requireNotNull(
+                sdkSaltFetch.implementation as? MutableMethodImplementation
+            ).replaceInstruction(
+                sdkSaltExecuteCalls.single(),
+                BuilderInstruction35c(
+                    Opcode.INVOKE_STATIC, 1, originalSaltCall.registerC, 0, 0, 0, 0,
+                    ImmutableMethodReference(
+                        vmType, "morpheExecuteSdkSaltRequest",
+                        listOf("Lokhttp3/Call;"), "Lokhttp3/Response;",
+                    ),
+                ),
+            )
+
             // The SDK's b.l.b(profile) conditionally registers a missing
             // browser identifier at /v2/api/platform_users/browser/create.
             // Replace ONLY its sync f.a.a(request) call with an instrumented
