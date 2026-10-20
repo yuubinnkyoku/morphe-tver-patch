@@ -1786,8 +1786,14 @@ val tverPipPatch = bytecodePatch(
             }
             onSplashViewCreated.addInstructions(
                 splashReturns.single(),
-                "invoke-virtual {p0}, $fragmentType->morpheEarlyHomeShow()V",
+                "invoke-direct {p0}, $fragmentType->morpheEarlyHomeShow()V",
             )
+            // Regression guard: Android ART rejects invoke-virtual for this
+            // private instance method (VerifyError at dex pc 0x50).
+            check(onSplashViewCreated.getInstruction(splashReturns.single()).opcode ==
+                Opcode.INVOKE_DIRECT) {
+                "Early home private helper must be called using invoke-direct"
+            }
 
         }
 
