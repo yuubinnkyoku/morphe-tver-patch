@@ -1809,6 +1809,120 @@ val tverPipPatch = bytecodePatch(
             )
 
 
+            // b.l.a(Context) performs b.c.a(3) after SDK CDN config and
+            // before profile setup. This synchronizes /v2/api/public/current_time,
+            // retries nonzero API result up to three times with a 1000ms sleep.
+            // Isolate server-time API and explicit retry delay; no changes to
+            // time values, retry logic, failure handling or HTTP request data.
+            val sdkClockSyncType = "Lb/c;"
+            val sdkTimeApiType = "Lc/p;"
+            val sdkTimeApiResultType = "Lc/b;"
+            val sdkClockCls = mutableClassDefBy(classDefBy(sdkClockSyncType))
+            val sdkClockMethod = sdkClockCls.methods.single {
+                it.name == "a" &&
+                    it.parameterTypes.map { type -> type.toString() } == listOf("I") &&
+                    it.returnType == "V"
+            }
+            val sdkClockOps = requireNotNull(sdkClockMethod.implementation).instructions.toList()
+            val clockCallIndices = sdkClockOps.indices.filter { i ->
+                val instruction = sdkClockOps[i]
+                val ref = (instruction as? ReferenceInstruction)?.reference as? MethodReference
+                instruction.opcode == Opcode.INVOKE_VIRTUAL &&
+                    ref?.definingClass == sdkTimeApiType &&
+                    ref.name == "a" && ref.parameterTypes.isEmpty() &&
+                    ref.returnType == sdkTimeApiResultType
+            }
+            check(clockCallIndices.size == 1) {
+                "Expected exactly one TVer SDK time API call, found " + clockCallIndices.size
+            }
+            val clockSleepIndices = sdkClockOps.indices.filter { i ->
+                val instruction = sdkClockOps[i]
+                val ref = (instruction as? ReferenceInstruction)?.reference as? MethodReference
+                instruction.opcode == Opcode.INVOKE_STATIC &&
+                    ref?.definingClass == "Ljava/lang/Thread;" &&
+                    ref.name == "sleep" &&
+                    ref.parameterTypes.map { type -> type.toString() } == listOf("J") &&
+                    ref.returnType == "V"
+            }
+            check(clockSleepIndices.size == 1) {
+                "Expected one TVer SDK time retry sleep, got " + clockSleepIndices.size
+            }
+            fun addClockLogHelper(name: String, event: String) {
+                check(vmCls.methods.none { it.name == name })
+                vmCls.methods.add(ImmutableMethod(
+                    vmType, name, emptyList(), "V",
+                    AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                    null, null, MutableMethodImplementation(1),
+                ).toMutable().apply { addInstructions(0, """
+                    const-string v0, "$event"
+                    invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                    return-void
+                """.trimIndent()) })
+            }
+            addClockLogHelper("morpheTimeSyncAttempt",
+                "SDK_CURRENT_TIME_SYNC_ATTEMPT")
+            sdkClockMethod.addInstructions(
+                0, "invoke-static {}, $vmType->morpheTimeSyncAttempt()V",
+            )
+            check(vmCls.methods.none { it.name == "morpheRunSdkCurrentTimeApi" })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheRunSdkCurrentTimeApi",
+                listOf(ImmutableMethodParameter(sdkTimeApiType, null, null)),
+                sdkTimeApiResultType,
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(2),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "SDK_CURRENT_TIME_API_START"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                invoke-virtual {p0}, $sdkTimeApiType->a()$sdkTimeApiResultType
+                move-result-object v0
+                invoke-static {}, $vmType->morpheCurrentTimeApiReturned()V
+                return-object v0
+            """.trimIndent()) })
+            addClockLogHelper("morpheCurrentTimeApiReturned",
+                "SDK_CURRENT_TIME_API_END")
+            check(vmCls.methods.none { it.name == "morpheSdkCurrentTimeRetrySleep" })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, "morpheSdkCurrentTimeRetrySleep",
+                listOf(ImmutableMethodParameter("J", null, null)), "V",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(3),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "SDK_CURRENT_TIME_RETRY_SLEEP_START"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                invoke-static {p0, p1}, Ljava/lang/Thread;->sleep(J)V
+                const-string v0, "SDK_CURRENT_TIME_RETRY_SLEEP_END"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                return-void
+            """.trimIndent()) })
+            val sdkClockImpl =
+                requireNotNull(sdkClockMethod.implementation as? MutableMethodImplementation)
+            val originalTimeCall = sdkClockOps[clockCallIndices.single()] as Instruction35c
+            check(originalTimeCall.registerCount == 1)
+            sdkClockImpl.replaceInstruction(
+                clockCallIndices.single(),
+                BuilderInstruction35c(
+                    Opcode.INVOKE_STATIC, 1, originalTimeCall.registerC, 0, 0, 0, 0,
+                    ImmutableMethodReference(
+                        vmType, "morpheRunSdkCurrentTimeApi",
+                        listOf(sdkTimeApiType), sdkTimeApiResultType,
+                    ),
+                ),
+            )
+            val originalClockSleep = sdkClockOps[clockSleepIndices.single()] as Instruction35c
+            check(originalClockSleep.registerCount == 2)
+            sdkClockImpl.replaceInstruction(
+                clockSleepIndices.single(),
+                BuilderInstruction35c(
+                    Opcode.INVOKE_STATIC, 2,
+                    originalClockSleep.registerC, originalClockSleep.registerD, 0, 0, 0,
+                    ImmutableMethodReference(
+                        vmType, "morpheSdkCurrentTimeRetrySleep",
+                        listOf("J"), "V",
+                    ),
+                ),
+            )
+
             // TVer SDK b.t holds a 24-hour cached salt in tversdk_prefs.
             // When absent/expired, a(String cdnEndpoint, Context) synchronously
             // fetches /data/string/s.json. This happens *between* SDK CDN
