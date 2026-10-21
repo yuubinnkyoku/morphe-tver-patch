@@ -1,3 +1,9 @@
+## [1.2.0-dev.5](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.4...v1.2.0-dev.5) (2026-10-21)
+
+### ✨ New Features
+
+* integrate Nico FPS controls and saved log copy into Morphe settings ([92c8b48](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/92c8b4813548ce801e8da5699cb50655eeef1f4a))
+
 ## [1.2.0-dev.4](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.3...v1.2.0-dev.4) (2026-10-21)
 
 ### ✨ New Features
