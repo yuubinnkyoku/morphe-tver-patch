@@ -87,3 +87,10 @@ Development takes place on the `dev` branch. CI builds and publishes prerelease 
 ## 📜 License
 
 yuubinnkyoku TVer patches are licensed under the [GNU General Public License v3.0](LICENSE)
+
+## Resolution-based video quality picker (experimental)
+
+Enable **TVer: resolution quality picker (7.2.1)** in Morphe (off by default). In the regular VOD player, the existing **Quality** button opens a list of renditions actually reported by the playback SDK (for example 1080p / 720p) plus **Auto**. When the rendition list is not available, the stock TVer quality menu remains accessible.
+
+The patch lifts the phone's regular-VOD AUTO/HIGH 720p resolution cap to 1080p, but **it cannot provide 1080p when the server does not offer it**. The displayed current resolution is reported by the playback state. Manual selection is per playback, not a persistent global preference. Live, short-form and legacy players are not guaranteed to work. This is **not yet device-tested**; disable this patch if it causes playback problems.
+
