@@ -1,3 +1,9 @@
+## [1.1.0-dev.28](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.27...v1.1.0-dev.28) (2026-10-21)
+
+### ✨ New Features
+
+* optional nonblocking SDK clock sync to bypass startup retries ([32ad35a](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/32ad35a64f7b2d57b662649ae8bea36266391f09))
+
 ## [1.1.0-dev.27](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.26...v1.1.0-dev.27) (2026-10-20)
 
 ### 🐛 Bug Fixes
