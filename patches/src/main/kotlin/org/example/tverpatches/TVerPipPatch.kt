@@ -2194,6 +2194,10 @@ val tverPipPatch = bytecodePatch(
             val eventListenerType = "Lokhttp3/EventListener;"
             val eventListenerCls = mutableClassDefBy(classDefBy(eventListenerType))
             val eventProbeSignatures = listOf(
+                Triple("callStart", listOf("Lokhttp3/Call;"),
+                    "USER_INIT_CALL_START"),
+                Triple("callEnd", listOf("Lokhttp3/Call;"),
+                    "USER_INIT_CALL_END"),
                 Triple("proxySelectStart", listOf("Lokhttp3/Call;", "Lokhttp3/HttpUrl;"),
                     "USER_INIT_PROXY_SELECT_START"),
                 Triple("proxySelectEnd", listOf("Lokhttp3/Call;", "Lokhttp3/HttpUrl;", "Ljava/util/List;"),
@@ -2256,6 +2260,61 @@ val tverPipPatch = bytecodePatch(
                     0, "invoke-static {p1}, $vmType->$helperName(Lokhttp3/Call;)V",
                 )
             }
+
+            // Terminal IOException callback from OkHttp (including DNS failures).
+            // The exception type is useful for distinguishing UnknownHostException,
+            // SocketTimeoutException, ConnectException, cancellation, etc.
+            // Never log message/stack trace: those may contain URLs and identifiers.
+            val eventFailedSignatures = listOf("Lokhttp3/Call;", "Ljava/io/IOException;")
+            val eventFailedMethods = eventListenerCls.methods.filter { method ->
+                method.name == "callFailed" &&
+                    method.parameterTypes.map { it.toString() } == eventFailedSignatures &&
+                    method.returnType == "V"
+            }
+            check(eventFailedMethods.size == 1) {
+                "Expected OkHttp EventListener.callFailed, got " + eventFailedMethods.size
+            }
+            val eventFailedHelperName = "morpheUserInitCallFailed"
+            check(vmCls.methods.none { it.name == eventFailedHelperName })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, eventFailedHelperName,
+                listOf(
+                    ImmutableMethodParameter("Lokhttp3/Call;", null, null),
+                    ImmutableMethodParameter("Ljava/io/IOException;", null, null),
+                ),
+                "V", AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(4),
+            ).toMutable().apply { addInstructions(0, """
+                invoke-interface {p0}, Lokhttp3/Call;->request()Lokhttp3/Request;
+                move-result-object v0
+                invoke-virtual {v0}, Lokhttp3/Request;->url()Lokhttp3/HttpUrl;
+                move-result-object v0
+                invoke-virtual {v0}, Lokhttp3/HttpUrl;->encodedPath()Ljava/lang/String;
+                move-result-object v0
+                const-string v1, "user/api/v1/init"
+                invoke-virtual {v0, v1}, Ljava/lang/String;->endsWith(Ljava/lang/String;)Z
+                move-result v0
+                if-eqz v0, :event_failed_done
+                const-string v0, "USER_INIT_CALL_FAILED"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                invoke-virtual {p1}, Ljava/lang/Object;->getClass()Ljava/lang/Class;
+                move-result-object v0
+                invoke-virtual {v0}, Ljava/lang/Class;->getSimpleName()Ljava/lang/String;
+                move-result-object v0
+                const-string v1, "USER_INIT_ERROR_"
+                invoke-virtual {v1, v0}, Ljava/lang/String;->concat(Ljava/lang/String;)Ljava/lang/String;
+                move-result-object v0
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                :event_failed_done
+                return-void
+            """.trimIndent()) })
+            val eventFailedMethod = eventFailedMethods.single()
+            check(requireNotNull(eventFailedMethod.implementation).instructions.isNotEmpty()) {
+                "No OkHttp EventListener.callFailed implementation"
+            }
+            eventFailedMethod.addInstructions(
+                0, "invoke-static {p1, p2}, $vmType->$eventFailedHelperName(Lokhttp3/Call;Ljava/io/IOException;)V",
+            )
 
             // Diagnose *where* user/init stalls inside OkHttp's networking.
             // RetryInterceptor.proceed() includes DNS, TCP, TLS, server headers.
