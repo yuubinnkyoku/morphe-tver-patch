@@ -1,0 +1,53 @@
+package org.example.tverpatches
+
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.patch.bytecodePatch
+
+/**
+ * Experimental offline-only transparent WebView comments synchronized with TVer.
+ * The Android extension has no compile-time dependency on TVer's classes.
+ */
+@Suppress("unused")
+val tverNicoCommentOverlayPatch = bytecodePatch(
+    name = "TVer: Nico comment overlay prototype (7.2.1)",
+    description = "Experimental transparent WebView with offline test comments and episode playback synchronization.",
+    default = false,
+) {
+    compatibleWith("jp.hamitv.hamiand1"("7.2.1"))
+    extendWith("extensions/extension.mpe")
+
+    execute {
+        val surfaceType = "Ljp/hamitv/hamiand1/feature/episode/ui/screen/video/EpisodePersistentPlayerSurfaceKt;"
+        val holderType = "Ljp/hamitv/hamiand1/feature/episode/ui/screen/video/EpisodeVideoLayerHolder;"
+        val hostType = "Ljp/hamitv/hamiand1/feature/episode/ui/screen/video/EpisodePersistentPlayerHostView;"
+        val bridgeType = "Lorg/example/tverpatches/extension/NicoOverlayBridge;"
+
+        val cls = mutableClassDefBy(classDefBy(surfaceType))
+        val update = cls.methods.single {
+            it.name == "EpisodePersistentPlayerSurface\$lambda\$5\$0" &&
+                it.parameterTypes.map(CharSequence::toString) ==
+                    listOf(holderType, "Landroidx/compose/runtime/State;", hostType)
+        }
+        check(update.implementation?.registerCount == 4) {
+            "Unexpected TVer update registers; refusing to inject"
+        }
+        // Index 2: after host null-check. p0 and p2 still hold original values;
+        // later in this method p0 is overwritten, so do NOT hook the method end.
+        update.addInstructions(2, """
+            invoke-virtual {p0}, $holderType->getController()Ljp/play/tverplayer/player/contract/PlayerController;
+            move-result-object v0
+            invoke-interface {v0}, Ljp/play/tverplayer/player/contract/PlayerController;->getState()Lkotlinx/coroutines/flow/StateFlow;
+            move-result-object v0
+            invoke-static {p2, v0}, $bridgeType->bind(Landroid/view/ViewGroup;Ljava/lang/Object;)V
+        """.trimIndent())
+
+        val release = cls.methods.single {
+            it.name == "EpisodePersistentPlayerSurface\$lambda\$4\$0" &&
+                it.parameterTypes.map(CharSequence::toString) == listOf(hostType)
+        }
+        check(release.implementation != null)
+        // The Compose AndroidView onRelease path; insert before setLayer(null).
+        release.addInstructions(2,
+            "invoke-static {p0}, $bridgeType->unbind(Landroid/view/ViewGroup;)V")
+    }
+}
