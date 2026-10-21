@@ -5,9 +5,12 @@ import android.graphics.Color;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.ConsoleMessage;
+import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
@@ -24,6 +27,7 @@ import java.util.Locale;
 @SuppressWarnings("unused")
 public final class NicoOverlayBridge {
     private static final String TAG = "MorpheNicoOverlay";
+    private static final String PERF_PREFIX = "MORPHE_NICO_PERF ";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static WeakReference<ViewGroup> hostRef = new WeakReference<>(null);
     private static WeakReference<PassThroughWebView> webRef = new WeakReference<>(null);
@@ -140,11 +144,28 @@ public final class NicoOverlayBridge {
         web.getSettings().setAllowContentAccess(false);
         web.getSettings().setBlockNetworkLoads(true);
         web.getSettings().setDomStorageEnabled(false);
+        // All content is bundled locally; forward only our 5-second FPS summaries.
+        // No JavascriptInterface and no per-frame Java/JS calls are needed.
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onConsoleMessage(ConsoleMessage message) {
+                String text = message.message();
+                if (text != null && text.startsWith(PERF_PREFIX)) {
+                    Log.i(TAG, text.substring(PERF_PREFIX.length()));
+                    return true;
+                }
+                return super.onConsoleMessage(message);
+            }
+        });
         web.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView view, String url) {
                 if (webRef.get() == web) {
                     ready = true;
-                    Log.i(TAG, "Offline renderer initialized");
+                    Display display = web.getDisplay();
+                    float displayHz = display == null ? 0f : display.getRefreshRate();
+                    Log.i(TAG, String.format(Locale.ROOT,
+                        "Renderer ready; reportedDisplayHz=%.1f (WebView rAF FPS measured separately)",
+                        displayHz));
+
                     sendClock(web);
                 }
             }
@@ -309,13 +330,64 @@ public final class NicoOverlayBridge {
                     ctx.fillText(lines[i],x,y+i*size*1.16);
                 }
             }
+            // JS requestAnimationFrame callback cadence is the measurement.
+            // It may differ from the actual physical screen/compositor FPS.
+            // Collect enough samples for a useful p95 without per-frame logging.
+            const perfWindowMs=5000;
+            let perfStart=null,prevFrameTime=null;
+            let frameIntervals=[],drawCostSum=0,drawCostMax=0,drawnSum=0;
+            function recordPerf(start,drawCost,drawn){
+                if(perfStart===null){
+                    perfStart=start;
+                    prevFrameTime=start;
+                    return;
+                }
+                const interval=start-prevFrameTime;
+                prevFrameTime=start;
+                if(interval>0){
+                    frameIntervals.push(interval);
+                    drawCostSum+=drawCost;
+                    drawCostMax=Math.max(drawCostMax,drawCost);
+                    drawnSum+=drawn;
+                }
+                const elapsed=start-perfStart;
+                if(elapsed<perfWindowMs)return;
+                const count=frameIntervals.length;
+                if(count){
+                    const sorted=frameIntervals.slice().sort((a,b)=>a-b);
+                    const pct=q=>sorted[Math.min(count-1,Math.max(0,Math.ceil(count*q)-1))];
+                    const over17=sorted.filter(v=>v>16.7).length;
+                    const over25=sorted.filter(v=>v>25).length;
+                    const over33=sorted.filter(v=>v>33.3).length;
+                    console.log('MORPHE_NICO_PERF '+
+                        'fps='+(1000*count/elapsed).toFixed(1)+
+                        ' p50ms='+pct(0.50).toFixed(1)+
+                        ' p95ms='+pct(0.95).toFixed(1)+
+                        ' maxMs='+sorted[count-1].toFixed(1)+
+                        ' gt16ms='+over17+'/'+count+
+                        ' gt25ms='+over25+'/'+count+
+                        ' gt33ms='+over33+'/'+count+
+                        ' drawAvgMs='+(drawCostSum/count).toFixed(2)+
+                        ' drawMaxMs='+drawCostMax.toFixed(2)+
+                        ' commentsAvg='+(drawnSum/count).toFixed(1)+
+                        ' playing='+clock.playing+
+                        ' rate='+clock.rate+
+                        ' ad='+clock.ad);
+                }
+                perfStart=start;
+                frameIntervals=[];
+                drawCostSum=0;
+                drawCostMax=0;
+                drawnSum=0;
+            }
             function frame(){
+                const frameStart=performance.now();
+                let drawn=0;
                 ctx.clearRect(0,0,W,H);
                 if(!clock.ad&&!clock.seeking){
                     const ms=clock.ms+(clock.playing?Math.max(0,performance.now()-clock.stamp)*clock.rate:0);
                     const comments=threads===null?demo:threads;
                     const timeline=threads===null?ms%16000:ms;
-                    let drawn=0;
                     for(let i=0;i<comments.length;i++){
                         const age=timeline-comments[i].vposMs;
                         if(age>=0&&age<scrollMs){
@@ -329,6 +401,7 @@ public final class NicoOverlayBridge {
                         ctx.fillText('Morphe Nico Overlay — TEST MODE',18,H-34);
                     }
                 }
+                recordPerf(frameStart,performance.now()-frameStart,drawn);
                 requestAnimationFrame(frame);
             }
             window.MorpheNico={update,setThreads};
