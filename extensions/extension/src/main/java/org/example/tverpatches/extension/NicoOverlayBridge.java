@@ -24,6 +24,9 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -42,6 +45,10 @@ import java.util.Locale;
 public final class NicoOverlayBridge {
     private static final String TAG = "MorpheNicoOverlay";
     private static final String PERF_PREFIX = "MORPHE_NICO_PERF ";
+    private static final String PREFS = "morphe.tver.settings";
+    private static final String COMMENTS_VISIBLE = "nico_comments_visible";
+    private static final String FPS_VISIBLE = "nico_fps_hud_visible";
+    private static final String SAVED_FPS_REPORT = "nico_fps_last_report";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static WeakReference<ViewGroup> hostRef = new WeakReference<>(null);
     private static WeakReference<PassThroughWebView> webRef = new WeakReference<>(null);
@@ -144,9 +151,7 @@ public final class NicoOverlayBridge {
         getFlowValue = null;
         stateClass = null;
         position = phase = rate = ad = seeking = generation = null;
-        latestPerf = null;
-        displayHz = 0;
-        perfHistory.clear();
+        // Keep FPS history across playback -> settings navigation.
         TextView badge = badgeRef.get();
         if (badge != null) {
             badge.setOnClickListener(null);
@@ -211,6 +216,7 @@ public final class NicoOverlayBridge {
                         "Renderer ready; reportedDisplayHz=%.1f (WebView rAF FPS measured separately)",
                         displayHz));
                     updateFpsBadge();
+                    applyOverlayPreferences();
                     sendClock(web);
                 }
             }
@@ -237,9 +243,9 @@ public final class NicoOverlayBridge {
         badge.setElevation(dp(host, 4));
         badge.setText("FPS --  |  measuring...");
         badge.setContentDescription("Nico overlay FPS diagnostics, tap for details and copy");
-        badge.setOnClickListener(v -> showPerfDialog(host));
+        badge.setOnClickListener(v -> showPerfDialog(host.getContext()));
         badge.setOnLongClickListener(v -> {
-            copyPerfReport(host);
+            copyPerfReport(host.getContext());
             return true;
         });
         return badge;
@@ -266,12 +272,17 @@ public final class NicoOverlayBridge {
     }
 
     private static void onPerfStats(PassThroughWebView web, String stats) {
-        if (webRef.get() != web || hostRef.get() == null || stats.length() > 1200) return;
+        ViewGroup host = hostRef.get();
+        if (webRef.get() != web || host == null || stats.length() > 1200) return;
         if (!stats.startsWith("fps=") || !stats.contains("p95ms=")) return;
         latestPerf = stats;
         perfHistory.addLast(stats);
         while (perfHistory.size() > PERF_HISTORY_LIMIT) perfHistory.removeFirst();
         updateFpsBadge();
+        // Save one compact report every five seconds. It remains available
+        // from Morphe settings after TVer's playback view has been released.
+        host.getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString(SAVED_FPS_REPORT, perfReport(host.getContext())).apply();
     }
 
     private static void updateFpsBadge() {
@@ -281,9 +292,30 @@ public final class NicoOverlayBridge {
         String p95 = latestPerf == null ? "--" : metric(latestPerf, "p95ms");
         String hz = displayHz > 0 ? String.format(Locale.ROOT, "%.0f", displayHz) : "--";
         badge.setText("FPS " + fps + " / " + hz + "Hz\np95 " + p95 + "ms  ·  Tap to copy");
+        ViewGroup host = hostRef.get();
+        if (host != null) updateSettingBadgeVisibility(host.getContext(), badge);
     }
 
-    private static String perfReport() {
+    private static void applyOverlayPreferences() {
+        ViewGroup host = hostRef.get();
+        PassThroughWebView web = webRef.get();
+        if (host == null) return;
+        boolean showComments = host.getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(COMMENTS_VISIBLE, true);
+        if (ready && web != null && web.getParent() == host) {
+            web.evaluateJavascript(
+                "window.MorpheNico&&window.MorpheNico.setVisible(" +
+                (showComments ? "true" : "false") + ");", null);
+        }
+        updateFpsBadge();
+    }
+
+    private static String perfReport(Context context) {
+        if (perfHistory.isEmpty()) {
+            String stored = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(SAVED_FPS_REPORT, null);
+            if (stored != null && !stored.isEmpty()) return stored;
+        }
         StringBuilder report = new StringBuilder("TVer Morphe Nico Overlay FPS diagnostics\n");
         report.append("Device: ").append(Build.MANUFACTURER).append(" ")
             .append(Build.MODEL).append(" / Android ").append(Build.VERSION.RELEASE)
@@ -303,6 +335,12 @@ public final class NicoOverlayBridge {
         return report.toString();
     }
 
+    private static void updateSettingBadgeVisibility(Context context, TextView badge) {
+        boolean enabled = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(FPS_VISIBLE, true);
+        badge.setVisibility(enabled ? View.VISIBLE : View.GONE);
+    }
+
     private static Activity findActivity(Context source) {
         Context context = source;
         for (int i = 0; i < 12 && context != null; i++) {
@@ -315,31 +353,75 @@ public final class NicoOverlayBridge {
         return null;
     }
 
-    private static void copyPerfReport(ViewGroup host) {
-        ClipboardManager clipboard = (ClipboardManager) host.getContext()
+    private static void copyPerfReport(Context context) {
+        ClipboardManager clipboard = (ClipboardManager) context
             .getSystemService(Context.CLIPBOARD_SERVICE);
         if (clipboard == null) {
-            Toast.makeText(host.getContext(), "Clipboard unavailable", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "Clipboard unavailable", Toast.LENGTH_SHORT).show();
             return;
         }
-        clipboard.setPrimaryClip(ClipData.newPlainText("Morphe Nico FPS report", perfReport()));
-        Toast.makeText(host.getContext(), "FPS report copied", Toast.LENGTH_SHORT).show();
+        clipboard.setPrimaryClip(ClipData.newPlainText("Morphe Nico FPS report", perfReport(context)));
+        Toast.makeText(context, "FPS report copied", Toast.LENGTH_SHORT).show();
     }
 
-    private static void showPerfDialog(ViewGroup host) {
-        if (hostRef.get() != host || !host.isAttachedToWindow()) return;
-        Activity activity = findActivity(host.getContext());
+    private static void showPerfDialog(Context context) {
+        Activity activity = findActivity(context);
         if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
-            // A ContextWrapper without an Activity cannot safely show a dialog.
-            copyPerfReport(host);
+            copyPerfReport(context);
             return;
         }
         new AlertDialog.Builder(activity)
             .setTitle("Nico comment overlay · FPS")
-            .setMessage(perfReport())
-            .setPositiveButton("Copy report", (dialog, which) -> copyPerfReport(host))
+            .setMessage(perfReport(activity))
+            .setPositiveButton("Copy report", (dialog, which) -> copyPerfReport(activity))
             .setNegativeButton("Close", null)
             .show();
+    }
+
+    /**
+     * Extend the PiP patch's Morphe settings panel before it is attached to
+     * the AlertDialog. Scrolling keeps existing settings usable on phones.
+     */
+    public static View enhanceSettings(Activity activity, LinearLayout panel) {
+        if (activity == null || panel == null) return panel;
+        TextView heading = new TextView(activity);
+        heading.setText("ニコニコ風コメント・FPS計測");
+        heading.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        heading.setTextColor(Color.DKGRAY);
+        heading.setPadding(dp(panel, 20), dp(panel, 18), dp(panel, 12), dp(panel, 4));
+        panel.addView(heading);
+
+        panel.addView(makeSettingSwitch(activity, "コメント表示を有効にする",
+            COMMENTS_VISIBLE, true));
+        panel.addView(makeSettingSwitch(activity, "動画上にFPSを表示する",
+            FPS_VISIBLE, true));
+
+        android.widget.Button copy = new android.widget.Button(activity);
+        copy.setText("FPS計測ログを表示・コピー");
+        copy.setAllCaps(false);
+        copy.setOnClickListener(v -> showPerfDialog(activity));
+        panel.addView(copy);
+
+        ScrollView scroll = new ScrollView(activity);
+        scroll.setVerticalScrollBarEnabled(true);
+        scroll.addView(panel, new ScrollView.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return scroll;
+    }
+
+    private static Switch makeSettingSwitch(Activity activity, String title,
+                                            String key, boolean defaultValue) {
+        Switch toggle = new Switch(activity);
+        toggle.setText(title);
+        toggle.setPadding(dp(toggle, 24), dp(toggle, 12), dp(toggle, 24), dp(toggle, 12));
+        toggle.setChecked(activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(key, defaultValue));
+        toggle.setOnCheckedChangeListener((button, enabled) -> {
+            activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean(key, enabled).apply();
+            applyOverlayPreferences();
+        });
+        return toggle;
     }
 
     private static void sendClock(PassThroughWebView web) {
@@ -418,6 +500,7 @@ public final class NicoOverlayBridge {
                 {vposMs:12500,body:'改行テスト'+String.fromCharCode(10)+'２行目',commands:['big']}
             ];
             let threads=null;
+            let commentsEnabled=true;
             let clock={ms:0,stamp:performance.now(),playing:false,rate:1,ad:false,seeking:false};
             let lastReportedMs=null, lastSeekGeneration=null;
 
@@ -461,6 +544,7 @@ public final class NicoOverlayBridge {
                 lastSeekGeneration=generation;
                 clock={ms:next,stamp:now,playing:running,rate:nextRate,ad:!!ad,seeking:!!seeking};
             }
+            function setVisible(enabled){commentsEnabled=!!enabled;}
             function setThreads(input){
                 if(!Array.isArray(input)){threads=null;return;}
                 const result=[];
@@ -553,7 +637,7 @@ public final class NicoOverlayBridge {
                 const frameStart=performance.now();
                 let drawn=0;
                 ctx.clearRect(0,0,W,H);
-                if(!clock.ad&&!clock.seeking){
+                if(commentsEnabled&&!clock.ad&&!clock.seeking){
                     const ms=clock.ms+(clock.playing?Math.max(0,performance.now()-clock.stamp)*clock.rate:0);
                     const comments=threads===null?demo:threads;
                     const timeline=threads===null?ms%16000:ms;
@@ -573,7 +657,7 @@ public final class NicoOverlayBridge {
                 recordPerf(frameStart,performance.now()-frameStart,drawn);
                 requestAnimationFrame(frame);
             }
-            window.MorpheNico={update,setThreads};
+            window.MorpheNico={update,setThreads,setVisible};
             requestAnimationFrame(frame);
         })();
         </script></body></html>

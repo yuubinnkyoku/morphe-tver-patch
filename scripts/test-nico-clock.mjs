@@ -30,6 +30,7 @@ const sandbox = {
 };
 runInNewContext(script, sandbox, { timeout: 1000 });
 assert.equal(typeof window.MorpheNico.update, "function");
+assert.equal(typeof window.MorpheNico.setVisible, "function");
 
 function draw(text) {
     lines = [];
@@ -85,4 +86,9 @@ assert.equal(draw(special), null, "comments must hide during ads");
 update(3000, true, 1, false, false, 2);
 assert.ok(draw(marker) !== null, "seeking back must restore earlier comments");
 
-console.log("Nico overlay playback-clock regression tests passed");
+window.MorpheNico.setVisible(false);
+assert.equal(draw(marker), null, "comments must be hidden when disabled from settings");
+window.MorpheNico.setVisible(true);
+assert.ok(draw(marker) !== null, "comments must resume after re-enabling in settings");
+
+console.log("Nico overlay playback clock + visibility regression tests passed");

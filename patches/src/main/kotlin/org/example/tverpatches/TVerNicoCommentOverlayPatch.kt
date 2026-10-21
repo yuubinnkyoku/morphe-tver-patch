@@ -2,6 +2,8 @@ package org.example.tverpatches
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 /**
  * Experimental offline-only transparent WebView comments synchronized with TVer.
@@ -14,6 +16,8 @@ val tverNicoCommentOverlayPatch = bytecodePatch(
     default = false,
 ) {
     compatibleWith("jp.hamitv.hamiand1"("7.2.1"))
+    // The PiP patch supplies TVer's in-app Morphe settings screen.
+    dependsOn(tverPipPatch)
     extendWith("extensions/extension.mpe")
 
     execute {
@@ -49,5 +53,27 @@ val tverNicoCommentOverlayPatch = bytecodePatch(
         // The Compose AndroidView onRelease path; insert before setLayer(null).
         release.addInstructions(2,
             "invoke-static {p0}, $bridgeType->unbind(Landroid/view/ViewGroup;)V")
+
+        // Enhance the existing settings LinearLayout (v7) before the original
+        // AlertDialog.Builder.setView() call. This patch runs after PiP because
+        // it depends on that patch's generated morpheShowSettingsDialog method.
+        val activityType = "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;"
+        val activity = mutableClassDefBy(classDefBy(activityType))
+        val settings = activity.methods.single {
+            it.name == "morpheShowSettingsDialog" && it.parameterTypes.isEmpty()
+        }
+        check(settings.implementation?.registerCount == 9) {
+            "Unexpected Morphe settings dialog registers"
+        }
+        val insertion = settings.implementation!!.instructions.indexOfFirst { instruction ->
+            val method = (instruction as? ReferenceInstruction)?.reference as? MethodReference
+            method?.definingClass == "Landroid/app/AlertDialog\$Builder;" &&
+                method.name == "setView"
+        }
+        check(insertion >= 0) { "Morphe settings setView call not found" }
+        settings.addInstructions(insertion, """
+            invoke-static {p0, v7}, $bridgeType->enhanceSettings(Landroid/app/Activity;Landroid/widget/LinearLayout;)Landroid/view/View;
+            move-result-object v7
+        """.trimIndent())
     }
 }

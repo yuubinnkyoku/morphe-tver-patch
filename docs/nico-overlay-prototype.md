@@ -19,6 +19,18 @@ Experimental, OFF by default. This first stage verifies transparent offline WebV
 - Run `node scripts/test-nico-clock.mjs` to test repeated stale samples, fresh samples, pause/resume, 2x speed, seeks and ad masking. The Release workflow runs this check before semantic-release.
 - **This clock fix has not yet been revalidated on-device.** Repatch with a prerelease containing `8c7e64f` and compare comment movement against the original prototype.
 
+## TVer's in-app Morphe settings (experimental)
+
+The Nico overlay patch now depends on the PiP patch, which supplies TVer's existing `Morphe設定` entry. In TVer's Settings, open `Morphe設定`. The existing settings dialog scrolls and includes:
+
+- `コメント表示を有効にする`: show/hide test comments without repatching (default ON).
+- `動画上にFPSを表示する`: show/hide the small live FPS badge (default ON).
+- `FPS計測ログを表示・コピー`: inspect the recent FPS statistics and copy all of them to the clipboard.
+
+The last twelve 5-second samples are saved in SharedPreferences after each window so they are readable in settings **even after leaving playback or restarting TVer**. Logging continues when the FPS badge is hidden. Turning off comments stops their Canvas rendering; the frame-timing probe remains running. The video HUD itself still offers tap-to-show/copy and long-press copy.
+
+**Scope:** These are separate runtime toggles for the experimental comment view and FPS HUD, not a Morphe patch selection toggle. To remove the injected code entirely, disable the Nico overlay patch when repatching.
+
 ## Device test
 
 1. In Morphe Expert mode, select "TVer: Nico comment overlay prototype (7.2.1)" on an original 7.2.1 (versionCode 535) APK. This patch is disabled by default.
