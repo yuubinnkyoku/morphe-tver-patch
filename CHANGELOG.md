@@ -1,3 +1,9 @@
+## [1.2.0-dev.4](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.3...v1.2.0-dev.4) (2026-10-21)
+
+### ✨ New Features
+
+* add in-app Nico overlay FPS badge and copyable diagnostics ([e794e94](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/e794e9415b9a8ec2c6690494a803463ceefb03b8))
+
 ## [1.2.0-dev.3](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.2...v1.2.0-dev.3) (2026-10-21)
 
 ### ✨ New Features
