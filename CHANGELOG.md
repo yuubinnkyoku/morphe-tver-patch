@@ -1,3 +1,9 @@
+## [1.2.0-dev.3](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.2...v1.2.0-dev.3) (2026-10-21)
+
+### ✨ New Features
+
+* log five-second Nico overlay WebView FPS and frame timing ([3cec013](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3cec013dfc0e679e14c87a5c2b1154bf8c2c8855))
+
 ## [1.2.0-dev.2](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.1...v1.2.0-dev.2) (2026-10-21)
 
 ### 🐛 Bug Fixes
