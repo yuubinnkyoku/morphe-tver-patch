@@ -3,6 +3,10 @@ package app.template.extension.quality;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.util.Log;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
+import android.widget.ArrayAdapter;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -39,71 +43,139 @@ public final class VideoQualityPicker {
     }
 
     /**
-     * Returns false to show TVer's original quality picker if this player is
-     * unsupported, tracks have not loaded, or the dialog cannot be shown.
+     * Display our picker immediately, including while the media SDK is loading.
+     * The stock picker is reserved for unsupported engines or absent Activities.
+     * Video renditions are loaded asynchronously on the main thread and shown
+     * in the same dialog once the SDK reports them.
      */
     public static boolean open(Object playerUiState) {
         final Activity host = activity.get();
         if (host == null || host.isFinishing() || host.isDestroyed()) return false;
         try {
-            final Object engine = member(playerUiState, "controller");
-            if (engine == null || !ENGINE.equals(engine.getClass().getName())) return false;
-            final Object sdk = member(engine, "sdk");
-            if (sdk == null) return false;
-
-            final List<Choice> choices = enumerate(sdk);
-            if (choices.isEmpty()) return false;
-            final Object playback = call(engine, "getState");
-            final Object state = call(playback, "getValue");
-            final String mediaId = (String) call(state, "getMediaId");
-            final int videoWidth = number(call(state, "getVideoWidth"));
-            final int videoHeight = number(call(state, "getVideoHeight"));
-            final String title = videoHeight > 0
-                    ? "現在の動画の画質 ・ " + videoHeight + "p (" + videoWidth + "×" + videoHeight + ")"
-                    : "現在の動画の画質 ・ 読み込み中";
-
-            final CharSequence[] labels = new CharSequence[choices.size() + 1];
-            labels[0] = "自動";
-            int checked = 0;
-            // The selection only belongs to the same SDK instance (one playback).
-            if (lastSdk.get() == sdk && java.util.Objects.equals(lastMediaId, mediaId)
-                    && requestedHeight >= 0) {
-                for (int i = 0; i < choices.size(); i++) {
-                    if (choices.get(i).height == requestedHeight) checked = i + 1;
-                }
-            }
-            for (int i = 0; i < choices.size(); i++) {
-                Choice c = choices.get(i);
-                labels[i + 1] = c.height + "p";
+            Object engine = member(playerUiState, "controller");
+            if (engine != null && !ENGINE.equals(engine.getClass().getName())) {
+                // Legacy players still use TVer's own quality selector.
+                return false;
             }
 
-            new AlertDialog.Builder(host)
-                    .setTitle(title)
-                    .setSingleChoiceItems(labels, checked, (dialog, position) -> {
+            final ArrayList<Choice> choices = new ArrayList<>();
+            final Object[] activeEngine = new Object[1];
+            final Object[] activeSdk = new Object[1];
+            final String[] activeMediaId = new String[1];
+            final ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                    host,
+                    android.R.layout.simple_list_item_single_choice,
+                    new ArrayList<>(Collections.singletonList("画質を取得中…")));
+            final Handler handler = new Handler(Looper.getMainLooper());
+            final Runnable[] refresh = new Runnable[1];
+
+            final AlertDialog dialog = new AlertDialog.Builder(host)
+                    .setTitle("現在の動画の画質 ・ 読み込み中")
+                    .setSingleChoiceItems(adapter, -1, (d, position) -> {
+                        // The temporary loading/error row is not selectable.
+                        if (activeSdk[0] == null || choices.isEmpty()
+                                || position < 0 || position > choices.size()) return;
                         try {
                             if (position == 0) {
-                                setDesiredQuality(engine, "AUTO");
-                                applyAutomatic(sdk);
+                                setDesiredQuality(activeEngine[0], "AUTO");
+                                applyAutomatic(activeSdk[0]);
                                 requestedHeight = -1;
                             } else {
-                                Choice choice = choices.get(position - 1);
-                                setDesiredQuality(engine, "HIGH");
-                                applyChoice(sdk, choice);
-                                requestedHeight = choice.height;
+                                Choice chosen = choices.get(position - 1);
+                                setDesiredQuality(activeEngine[0], "HIGH");
+                                applyChoice(activeSdk[0], chosen);
+                                requestedHeight = chosen.height;
                             }
-                            lastSdk = new WeakReference<>(sdk);
-                            lastMediaId = mediaId;
-                        } catch (Exception e) {
-                            Log.e(TAG, "Unable to switch video track", e);
-                            android.widget.Toast.makeText(host, "画質を変更できませんでした", android.widget.Toast.LENGTH_SHORT).show();
+                            lastSdk = new WeakReference<>(activeSdk[0]);
+                            lastMediaId = activeMediaId[0];
+                        } catch (Exception error) {
+                            Log.e(TAG, "Unable to switch video track", error);
+                            android.widget.Toast.makeText(host,
+                                    "画質を変更できませんでした",
+                                    android.widget.Toast.LENGTH_SHORT).show();
                         }
-                        dialog.dismiss();
+                        d.dismiss();
                     })
-                    .setNegativeButton("キャンセル", null)
-                    .show();
+                    .setNegativeButton("閉じる", null)
+                    .create();
+
+            // Stop polling when the user dismisses the picker or navigates away.
+            dialog.setOnDismissListener(d -> {
+                if (refresh[0] != null) handler.removeCallbacks(refresh[0]);
+            });
+            dialog.show();
+
+            final long startedAt = SystemClock.uptimeMillis();
+            refresh[0] = () -> {
+                if (!dialog.isShowing()) return;
+                if (host.isFinishing() || host.isDestroyed()) {
+                    dialog.dismiss();
+                    return;
+                }
+                try {
+                    Object currentEngine = member(playerUiState, "controller");
+                    if (currentEngine != null
+                            && ENGINE.equals(currentEngine.getClass().getName())) {
+                        Object sdk = member(currentEngine, "sdk");
+                        if (sdk != null) {
+                            List<Choice> available = enumerate(sdk);
+                            if (!available.isEmpty()) {
+                                Object state = call(call(currentEngine, "getState"), "getValue");
+                                String mediaId = (String) call(state, "getMediaId");
+                                int width = number(call(state, "getVideoWidth"));
+                                int height = number(call(state, "getVideoHeight"));
+                                activeEngine[0] = currentEngine;
+                                activeSdk[0] = sdk;
+                                activeMediaId[0] = mediaId;
+                                choices.clear();
+                                choices.addAll(available);
+
+                                adapter.clear();
+                                adapter.add("自動");
+                                for (Choice choice : choices) {
+                                    adapter.add(choice.height + "p");
+                                }
+                                adapter.notifyDataSetChanged();
+                                dialog.setTitle(height > 0
+                                        ? "現在の動画の画質 ・ " + height
+                                                + "p (" + width + "×" + height + ")"
+                                        : "現在の動画の画質 ・ 読み込み中");
+
+                                int checked = 0;
+                                if (lastSdk.get() == sdk
+                                        && java.util.Objects.equals(lastMediaId, mediaId)
+                                        && requestedHeight >= 0) {
+                                    for (int i = 0; i < choices.size(); i++) {
+                                        if (choices.get(i).height == requestedHeight) {
+                                            checked = i + 1;
+                                            break;
+                                        }
+                                    }
+                                }
+                                dialog.getListView().setItemChecked(checked, true);
+                                return; // Tracks are ready. No more polling.
+                            }
+                        }
+                    }
+                } catch (Exception error) {
+                    // Startup can transiently fail before track groups exist.
+                    // Keep the loading row and retry rather than opening TVer's menu.
+                    Log.d(TAG, "Waiting for video tracks: " + error.getClass().getSimpleName());
+                }
+
+                if (SystemClock.uptimeMillis() - startedAt >= 15000L) {
+                    adapter.clear();
+                    adapter.add("画質を取得できませんでした。閉じて再試行してください");
+                    adapter.notifyDataSetChanged();
+                    dialog.setTitle("画質");
+                    return;
+                }
+                handler.postDelayed(refresh[0], 300L);
+            };
+            refresh[0].run();
             return true;
-        } catch (Exception e) {
-            Log.w(TAG, "Falling back to the original quality menu", e);
+        } catch (Exception error) {
+            Log.w(TAG, "Unable to display resolution picker", error);
             return false;
         }
     }
