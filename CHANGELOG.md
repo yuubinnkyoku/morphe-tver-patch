@@ -1,3 +1,14 @@
+## [1.2.0-dev.1](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0...v1.2.0-dev.1) (2026-10-21)
+
+### 🐛 Bug Fixes
+
+* compile experimental overlay extension with Java 17 ([6646c7d](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/6646c7d15ce0a41761a745233887fa0e99d915db))
+* document installing Nico overlay from published prereleases ([39e8cd2](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/39e8cd279bc24697a8f8c1203e5533410f7dd257))
+
+### ✨ New Features
+
+* add experimental offline Nico overlay prototype for TVer 7.2.1 ([3ec95e0](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3ec95e0264da88c16a953112c23ea3d237f253f9))
+
 ## [1.1.0](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.1...v1.1.0) (2026-10-21)
 
 ### 🐛 Bug Fixes

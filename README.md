@@ -70,9 +70,9 @@ Morpheのパッチ選択画面で **TVer: resolution quality picker (7.2.1)** �
 ## 🩹 パッチ一覧
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.1.0](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.1.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;全3パッチ
+> **[v1.2.0-dev.1](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.2.0-dev.1)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全4パッチ
 <details open>
-<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;3 パッチ</summary>
+<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;4 パッチ</summary>
 <br>
 
 **🎯 対応バージョン:**
@@ -83,6 +83,7 @@ Morpheのパッチ選択画面で **TVer: resolution quality picker (7.2.1)** �
 | 💊&nbsp;パッチ | 📜&nbsp;説明 | ⚙️&nbsp;オプション |
 |----------|----------------|-----------|
 | [TVer: 自動ピクチャーインピクチャー (7.2.1)](#tver-android-system-pip-7-2-1) | 見逃し配信を開いた直後・読み込み中・再生中に自動PiPへ移行。一時停止中やホームのプレビューは除外します。 |  |
+| [TVer: Nico comment overlay prototype (7.2.1)](#tver-nico-comment-overlay-prototype-7-2-1) | Experimental transparent WebView with offline test comments and episode playback synchronization. |  |
 | [TVer: resolution quality picker (7.2.1)](#tver-resolution-quality-picker-7-2-1) | Choose available video resolutions from a list (Auto, 1080p, 720p, etc.) and allow 1080p on phones for regular VOD. |  |
 | [TVer: プレイヤー広告の抑制 (7.2.1)](#tver-suppress-player-ads-7-2-1) | 一部の広告リクエストや再生処理を抑える実験的なパッチです。広告が完全になくなることは保証しません。 |  |
 
