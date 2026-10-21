@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-21T05:09:58",
-  "description": "## [1.1.0-dev.31](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.30...v1.1.0-dev.31) (2026-10-21)\n\n### 🐛 Bug Fixes\n\n* **tver:** restore AUTO quality and reset per-video selection state ([7abbdd6](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/7abbdd6ca60478a30bc7032d70f590f791fc2aaf))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.31/patches-1.1.0-dev.31.mpp",
+  "created_at": "2026-10-21T06:39:11",
+  "description": "## [1.1.0-dev.32](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.31...v1.1.0-dev.32) (2026-10-21)\n\n### 🐛 Bug Fixes\n\n* **tver:** show resolution picker while tracks load and refresh options ([4a3d949](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/4a3d949d3a01c0e12b1749f59fc148020815e9db))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.1.0-dev.32/patches-1.1.0-dev.32.mpp",
   "signature_download_url": "",
-  "version": "1.1.0-dev.31"
+  "version": "1.1.0-dev.32"
 }

@@ -1,3 +1,9 @@
+## [1.1.0-dev.32](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.31...v1.1.0-dev.32) (2026-10-21)
+
+### 🐛 Bug Fixes
+
+* **tver:** show resolution picker while tracks load and refresh options ([4a3d949](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/4a3d949d3a01c0e12b1749f59fc148020815e9db))
+
 ## [1.1.0-dev.31](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.30...v1.1.0-dev.31) (2026-10-21)
 
 ### 🐛 Bug Fixes
