@@ -58,9 +58,9 @@ PiPは`v1.0.0-dev.17`まで、Morphe設定は`v1.0.0-dev.18`までの実機テ�
 ## 🩹 パッチ一覧
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.1.0-dev.29](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.1.0-dev.29)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全2パッチ
+> **[v1.1.0-dev.30](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.1.0-dev.30)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全3パッチ
 <details open>
-<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;2 パッチ</summary>
+<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;3 パッチ</summary>
 <br>
 
 **🎯 対応バージョン:**
@@ -71,6 +71,7 @@ PiPは`v1.0.0-dev.17`まで、Morphe設定は`v1.0.0-dev.18`までの実機テ�
 | 💊&nbsp;パッチ | 📜&nbsp;説明 | ⚙️&nbsp;オプション |
 |----------|----------------|-----------|
 | [TVer: 自動ピクチャーインピクチャー (7.2.1)](#tver-android-system-pip-7-2-1) | 見逃し配信を開いた直後・読み込み中・再生中に自動PiPへ移行。一時停止中やホームのプレビューは除外します。 |  |
+| [TVer: resolution quality picker (7.2.1)](#tver-resolution-quality-picker-7-2-1) | Choose available video resolutions from a list (Auto, 1080p, 720p, etc.) and allow 1080p on phones for regular VOD. |  |
 | [TVer: プレイヤー広告の抑制 (7.2.1)](#tver-suppress-player-ads-7-2-1) | 一部の広告リクエストや再生処理を抑える実験的なパッチです。広告が完全になくなることは保証しません。 |  |
 
 </details>

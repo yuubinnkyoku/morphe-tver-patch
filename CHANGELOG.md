@@ -1,3 +1,10 @@
+## [1.1.0-dev.30](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.29...v1.1.0-dev.30) (2026-10-21)
+
+### ✨ New Features
+
+* **tver:** add adaptive rendition quality picker runtime bridge ([6fe235d](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/6fe235dd313671cc1dadcf19a5c996e521cf929d))
+* **tver:** hook Compose quality button and lift VOD 1080p phone cap ([dadfb38](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/dadfb383bebc44aea6e6cd5791a13abc1b0b4eb6))
+
 ## [1.1.0-dev.29](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.28...v1.1.0-dev.29) (2026-10-21)
 
 ### ✨ New Features

@@ -54,9 +54,9 @@ Development takes place on the `dev` branch. CI builds and publishes prerelease 
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.1.0-dev.29](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.1.0-dev.29)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;2 patches total
+> **[v1.1.0-dev.30](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.1.0-dev.30)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;3 patches total
 <details open>
-<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;2 patches</summary>
+<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;3 patches</summary>
 <br>
 
 **🎯 Supported versions:**
@@ -67,6 +67,7 @@ Development takes place on the `dev` branch. CI builds and publishes prerelease 
 | 💊&nbsp;Patch | 📜&nbsp;Description | ⚙️&nbsp;Options |
 |----------|----------------|-----------|
 | [TVer: Android system PiP (7.2.1)](#tver-android-system-pip-7-2-1) | Automatically enter system PiP for replay episodes; excludes paused episodes and home previews. |  |
+| [TVer: resolution quality picker (7.2.1)](#tver-resolution-quality-picker-7-2-1) | Choose available video resolutions from a list (Auto, 1080p, 720p, etc.) and allow 1080p on phones for regular VOD. |  |
 | [TVer: suppress player ads (7.2.1)](#tver-suppress-player-ads-7-2-1) | Experimentally suppress selected player ad requests and hooks; full ad blocking is not guaranteed. |  |
 
 </details>
