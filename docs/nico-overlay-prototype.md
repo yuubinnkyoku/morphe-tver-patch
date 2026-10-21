@@ -11,6 +11,14 @@ Experimental, OFF by default. This first stage verifies transparent offline WebV
 - Shows looping test comments (scrolling, ue/shita, colors, size). Provides a JS function to accept Niconico v1-shaped thread arrays for a later stage; nothing calls it yet.
 - WebView touch handling returns false to preserve TVer's player controls.
 
+## Verified prototype behavior and clock regression
+
+- The initial experimental .mpp was successfully applied to TVer 7.2.1 on Android 16, and sample comments were visible above video. This validates the basic patching and WebView stacking path on the tested device.
+- The initial clock implementation visibly jerked: comments shifted right in small increments and then jumped left when TVer's reported position advanced.
+- Commit `8c7e64f` fixes this in source: repeated stale StateFlow position samples no longer reset the JavaScript clock, and real position changes use monotonic correction with explicit seek handling.
+- Run `node scripts/test-nico-clock.mjs` to test repeated stale samples, fresh samples, pause/resume, 2x speed, seeks and ad masking. The Release workflow runs this check before semantic-release.
+- **This clock fix has not yet been revalidated on-device.** Repatch with a prerelease containing `8c7e64f` and compare comment movement against the original prototype.
+
 ## Device test
 
 1. In Morphe Expert mode, select "TVer: Nico comment overlay prototype (7.2.1)" on an original 7.2.1 (versionCode 535) APK. This patch is disabled by default.
@@ -23,8 +31,8 @@ Experimental, OFF by default. This first stage verifies transparent offline WebV
 
 - Real Niconico API, Jikkyo historic logs, title matching, settings and commenting
 - Bundled @xpadev-net/niconicomments or faithful Flash/HTML5 comment art
-- Tested rendering on protected SurfaceView, system PiP or Android hardware
-- End-to-end Morphe patching/installing the produced .mpp
+- Cross-device secure SurfaceView composition and Android system PiP overlay rendering are unverified
+- On-device smoothness of the updated playback clock is not yet verified
 
 The injected Kotlin patch deliberately requires the TVer 7.2.1 method signature and register-count assumption. If these differ it will fail patching instead of silently modifying another method. The Compose/SurfaceControl z-order is still a hardware-test question.
 
