@@ -1,3 +1,9 @@
+## [1.1.0-dev.31](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.30...v1.1.0-dev.31) (2026-10-21)
+
+### 🐛 Bug Fixes
+
+* **tver:** restore AUTO quality and reset per-video selection state ([7abbdd6](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/7abbdd6ca60478a30bc7032d70f590f791fc2aaf))
+
 ## [1.1.0-dev.30](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.29...v1.1.0-dev.30) (2026-10-21)
 
 ### ✨ New Features
