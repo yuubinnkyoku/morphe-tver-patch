@@ -27,6 +27,7 @@ public final class VideoQualityPicker {
     private static volatile WeakReference<Activity> activity = new WeakReference<>(null);
     private static volatile WeakReference<Object> lastSdk = new WeakReference<>(null);
     private static volatile int requestedHeight = -1; // -1 = automatic
+    private static volatile String lastMediaId;
 
     private VideoQualityPicker() {}
 
@@ -54,6 +55,7 @@ public final class VideoQualityPicker {
             if (choices.isEmpty()) return false;
             final Object playback = call(engine, "getState");
             final Object state = call(playback, "getValue");
+            final String mediaId = (String) call(state, "getMediaId");
             final int videoWidth = number(call(state, "getVideoWidth"));
             final int videoHeight = number(call(state, "getVideoHeight"));
             final String title = videoHeight > 0
@@ -64,7 +66,8 @@ public final class VideoQualityPicker {
             labels[0] = "自動";
             int checked = 0;
             // The selection only belongs to the same SDK instance (one playback).
-            if (lastSdk.get() == sdk && requestedHeight >= 0) {
+            if (lastSdk.get() == sdk && java.util.Objects.equals(lastMediaId, mediaId)
+                    && requestedHeight >= 0) {
                 for (int i = 0; i < choices.size(); i++) {
                     if (choices.get(i).height == requestedHeight) checked = i + 1;
                 }
@@ -79,14 +82,17 @@ public final class VideoQualityPicker {
                     .setSingleChoiceItems(labels, checked, (dialog, position) -> {
                         try {
                             if (position == 0) {
+                                setDesiredQuality(engine, "AUTO");
                                 applyAutomatic(sdk);
                                 requestedHeight = -1;
                             } else {
                                 Choice choice = choices.get(position - 1);
+                                setDesiredQuality(engine, "HIGH");
                                 applyChoice(sdk, choice);
                                 requestedHeight = choice.height;
                             }
                             lastSdk = new WeakReference<>(sdk);
+                            lastMediaId = mediaId;
                         } catch (Exception e) {
                             Log.e(TAG, "Unable to switch video track", e);
                             android.widget.Toast.makeText(host, "画質を変更できませんでした", android.widget.Toast.LENGTH_SHORT).show();
@@ -129,6 +135,16 @@ public final class VideoQualityPicker {
             }
         }
         return new ArrayList<>(byHeight.values());
+    }
+
+    /** Keep TVer's own desired quality consistent across playback reapplication. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void setDesiredQuality(Object engine, String name) throws Exception {
+        Class<?> enumClass = Class.forName(
+                "jp.play.tverplayer.player.contract.VideoQuality",
+                false, engine.getClass().getClassLoader());
+        Object value = Enum.valueOf((Class<? extends Enum>) enumClass, name);
+        call(engine, "setQuality", new Class<?>[]{enumClass}, value);
     }
 
     private static void applyAutomatic(Object sdk) throws Exception {
