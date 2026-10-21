@@ -34,3 +34,11 @@ The injected Kotlin patch deliberately requires the TVer 7.2.1 method signature 
 - https://github.com/xpadev-net/niconicomments
 - https://github.com/david419kr/niconico-yt-morphe-patches
 - https://github.com/bakwudo/uyu
+
+## Installing from GitHub Releases
+
+A commit on the dev branch alone is not sufficient for Morphe Manager. The release workflow must publish a prerelease with a downloadable `patches-<version>.mpp` asset. Check the GitHub Releases page and select the newest prerelease **published after this prototype**; an older bundle cannot contain this patch.
+
+In Morphe Manager, enable prerelease patch sources, update `yuubinnkyoku/morphe-tver-patch`, and choose the experimental comment overlay patch manually. The patch starts disabled by default.
+
+A successful Gradle `buildAndroid` job only confirms compilation. APK patching and on-device WebView composition still require testing.
