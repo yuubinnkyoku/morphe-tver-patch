@@ -1,3 +1,9 @@
+## [1.2.0-dev.2](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.1...v1.2.0-dev.2) (2026-10-21)
+
+### 🐛 Bug Fixes
+
+* keep Nico overlay playback clock monotonic between TVer samples ([8c7e64f](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/8c7e64f62480f676adf8fef4af9443c89a3b294b))
+
 ## [1.2.0-dev.1](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0...v1.2.0-dev.1) (2026-10-21)
 
 ### 🐛 Bug Fixes
