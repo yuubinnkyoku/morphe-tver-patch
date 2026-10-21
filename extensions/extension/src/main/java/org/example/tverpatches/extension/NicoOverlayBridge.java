@@ -1,11 +1,21 @@
 package org.example.tverpatches.extension;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.ContextWrapper;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Display;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,8 +24,12 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.lang.reflect.Method;
 import java.util.Locale;
 
@@ -31,6 +45,11 @@ public final class NicoOverlayBridge {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static WeakReference<ViewGroup> hostRef = new WeakReference<>(null);
     private static WeakReference<PassThroughWebView> webRef = new WeakReference<>(null);
+    private static WeakReference<TextView> badgeRef = new WeakReference<>(null);
+    private static final Deque<String> perfHistory = new ArrayDeque<>();
+    private static final int PERF_HISTORY_LIMIT = 12;
+    private static String latestPerf;
+    private static float displayHz;
     private static Object flow;
     private static boolean ready;
     private static boolean ticking;
@@ -47,7 +66,8 @@ public final class NicoOverlayBridge {
             if (host == null || web == null || web.getParent() != host) return;
             if (host.isAttachedToWindow()) {
                 // TVer's setSecure() may remove and re-add its SurfaceView.
-                if (host.getChildAt(host.getChildCount() - 1) != web) web.bringToFront();
+                // Keep the WebView below our tappable FPS badge, not above it.
+                bringOverlaysToFront(host);
                 sendClock(web);
             }
             ticking = true;
@@ -74,7 +94,14 @@ public final class NicoOverlayBridge {
                 PassThroughWebView web = makeWeb(host);
                 webRef = new WeakReference<>(web);
                 host.addView(web, new FrameLayout.LayoutParams(-1, -1));
-                web.bringToFront();
+                TextView badge = makeFpsBadge(host);
+                badgeRef = new WeakReference<>(badge);
+                FrameLayout.LayoutParams badgeParams = new FrameLayout.LayoutParams(-2, -2,
+                    Gravity.TOP | Gravity.START);
+                badgeParams.leftMargin = dp(host, 12);
+                badgeParams.topMargin = dp(host, 52);
+                host.addView(badge, badgeParams);
+                bringOverlaysToFront(host);
                 web.loadDataWithBaseURL(
                     "https://appassets.androidplatform.net/", HTML, "text/html", "UTF-8", null
                 );
@@ -92,8 +119,7 @@ public final class NicoOverlayBridge {
         // Run AFTER Compose has called host.setSecure() on this update.
         host.post(() -> {
             if (hostRef.get() != host) return;
-            PassThroughWebView web = webRef.get();
-            if (web != null && web.getParent() == host) web.bringToFront();
+            bringOverlaysToFront(host);
         });
         if (!ticking) {
             ticking = true;
@@ -118,6 +144,17 @@ public final class NicoOverlayBridge {
         getFlowValue = null;
         stateClass = null;
         position = phase = rate = ad = seeking = generation = null;
+        latestPerf = null;
+        displayHz = 0;
+        perfHistory.clear();
+        TextView badge = badgeRef.get();
+        if (badge != null) {
+            badge.setOnClickListener(null);
+            if (badge.getParent() instanceof ViewGroup) {
+                ((ViewGroup) badge.getParent()).removeView(badge);
+            }
+        }
+        badgeRef = new WeakReference<>(null);
         PassThroughWebView web = webRef.get();
         if (web != null) {
             if (web.getParent() instanceof ViewGroup) {
@@ -150,7 +187,15 @@ public final class NicoOverlayBridge {
             @Override public boolean onConsoleMessage(ConsoleMessage message) {
                 String text = message.message();
                 if (text != null && text.startsWith(PERF_PREFIX)) {
-                    Log.i(TAG, text.substring(PERF_PREFIX.length()));
+                    String stats = text.substring(PERF_PREFIX.length());
+                    Log.i(TAG, stats);
+                    if (webRef.get() == web) {
+                        if (Looper.myLooper() == Looper.getMainLooper()) {
+                            onPerfStats(web, stats);
+                        } else {
+                            web.post(() -> onPerfStats(web, stats));
+                        }
+                    }
                     return true;
                 }
                 return super.onConsoleMessage(message);
@@ -161,16 +206,140 @@ public final class NicoOverlayBridge {
                 if (webRef.get() == web) {
                     ready = true;
                     Display display = web.getDisplay();
-                    float displayHz = display == null ? 0f : display.getRefreshRate();
+                    displayHz = display == null ? 0f : display.getRefreshRate();
                     Log.i(TAG, String.format(Locale.ROOT,
                         "Renderer ready; reportedDisplayHz=%.1f (WebView rAF FPS measured separately)",
                         displayHz));
-
+                    updateFpsBadge();
                     sendClock(web);
                 }
             }
         });
         return web;
+    }
+
+    // This HUD is a sibling of the WebView, so only its small bounds consume taps.
+    // The fullscreen comment WebView remains touch-transparent.
+    private static int dp(View view, int value) {
+        return Math.round(value * view.getResources().getDisplayMetrics().density);
+    }
+
+    private static TextView makeFpsBadge(ViewGroup host) {
+        TextView badge = new TextView(host.getContext());
+        badge.setTextColor(Color.WHITE);
+        badge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        badge.setGravity(Gravity.CENTER);
+        badge.setPadding(dp(host, 9), dp(host, 6), dp(host, 9), dp(host, 6));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.argb(205, 18, 24, 36));
+        bg.setCornerRadius(dp(host, 8));
+        badge.setBackground(bg);
+        badge.setElevation(dp(host, 4));
+        badge.setText("FPS --  |  measuring...");
+        badge.setContentDescription("Nico overlay FPS diagnostics, tap for details and copy");
+        badge.setOnClickListener(v -> showPerfDialog(host));
+        badge.setOnLongClickListener(v -> {
+            copyPerfReport(host);
+            return true;
+        });
+        return badge;
+    }
+
+    private static void bringOverlaysToFront(ViewGroup host) {
+        PassThroughWebView web = webRef.get();
+        TextView badge = badgeRef.get();
+        boolean hasBadge = badge != null && badge.getParent() == host;
+        if (web != null && web.getParent() == host) {
+            int expected = host.getChildCount() - (hasBadge ? 2 : 1);
+            if (host.indexOfChild(web) != expected) web.bringToFront();
+        }
+        if (hasBadge && host.indexOfChild(badge) != host.getChildCount() - 1) {
+            badge.bringToFront();
+        }
+    }
+
+    private static String metric(String sample, String key) {
+        for (String field : sample.split(" ")) {
+            if (field.startsWith(key + "=")) return field.substring(key.length() + 1);
+        }
+        return "--";
+    }
+
+    private static void onPerfStats(PassThroughWebView web, String stats) {
+        if (webRef.get() != web || hostRef.get() == null || stats.length() > 1200) return;
+        if (!stats.startsWith("fps=") || !stats.contains("p95ms=")) return;
+        latestPerf = stats;
+        perfHistory.addLast(stats);
+        while (perfHistory.size() > PERF_HISTORY_LIMIT) perfHistory.removeFirst();
+        updateFpsBadge();
+    }
+
+    private static void updateFpsBadge() {
+        TextView badge = badgeRef.get();
+        if (badge == null) return;
+        String fps = latestPerf == null ? "--" : metric(latestPerf, "fps");
+        String p95 = latestPerf == null ? "--" : metric(latestPerf, "p95ms");
+        String hz = displayHz > 0 ? String.format(Locale.ROOT, "%.0f", displayHz) : "--";
+        badge.setText("FPS " + fps + " / " + hz + "Hz\np95 " + p95 + "ms  ·  Tap to copy");
+    }
+
+    private static String perfReport() {
+        StringBuilder report = new StringBuilder("TVer Morphe Nico Overlay FPS diagnostics\n");
+        report.append("Device: ").append(Build.MANUFACTURER).append(" ")
+            .append(Build.MODEL).append(" / Android ").append(Build.VERSION.RELEASE)
+            .append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");
+        report.append("Display reported refresh: ")
+            .append(String.format(Locale.ROOT, "%.1f Hz", displayHz)).append("\n");
+        report.append("Measurement: WebView requestAnimationFrame cadence, not physical presented FPS.\n");
+        report.append("Windows: five seconds each; oldest first; maximum 12.\n\n");
+        if (perfHistory.isEmpty()) {
+            report.append("Collecting first five seconds of frame data...");
+        } else {
+            int window = 1;
+            for (String sample : perfHistory) {
+                report.append(window++).append(": ").append(sample).append("\n");
+            }
+        }
+        return report.toString();
+    }
+
+    private static Activity findActivity(Context source) {
+        Context context = source;
+        for (int i = 0; i < 12 && context != null; i++) {
+            if (context instanceof Activity) return (Activity) context;
+            if (!(context instanceof ContextWrapper)) break;
+            Context next = ((ContextWrapper) context).getBaseContext();
+            if (next == context) break;
+            context = next;
+        }
+        return null;
+    }
+
+    private static void copyPerfReport(ViewGroup host) {
+        ClipboardManager clipboard = (ClipboardManager) host.getContext()
+            .getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard == null) {
+            Toast.makeText(host.getContext(), "Clipboard unavailable", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        clipboard.setPrimaryClip(ClipData.newPlainText("Morphe Nico FPS report", perfReport()));
+        Toast.makeText(host.getContext(), "FPS report copied", Toast.LENGTH_SHORT).show();
+    }
+
+    private static void showPerfDialog(ViewGroup host) {
+        if (hostRef.get() != host || !host.isAttachedToWindow()) return;
+        Activity activity = findActivity(host.getContext());
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            // A ContextWrapper without an Activity cannot safely show a dialog.
+            copyPerfReport(host);
+            return;
+        }
+        new AlertDialog.Builder(activity)
+            .setTitle("Nico comment overlay · FPS")
+            .setMessage(perfReport())
+            .setPositiveButton("Copy report", (dialog, which) -> copyPerfReport(host))
+            .setNegativeButton("Close", null)
+            .show();
     }
 
     private static void sendClock(PassThroughWebView web) {
