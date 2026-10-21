@@ -1,3 +1,9 @@
+## [1.1.0-dev.29](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.28...v1.1.0-dev.29) (2026-10-21)
+
+### ✨ New Features
+
+* trace user init OkHttp terminal call failures ([9e8567d](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/9e8567d842351ac19ce8815d9aa9ced344ef1972))
+
 ## [1.1.0-dev.28](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0-dev.27...v1.1.0-dev.28) (2026-10-21)
 
 ### ✨ New Features
