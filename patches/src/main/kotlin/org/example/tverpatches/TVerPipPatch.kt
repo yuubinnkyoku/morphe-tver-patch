@@ -996,6 +996,26 @@ val tverPipPatch = bytecodePatch(
                     invoke-virtual {v0, v3}, Landroid/widget/CompoundButton;->setChecked(Z)V
                     invoke-virtual {v0, p0}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
                     invoke-virtual {v7, v0}, Landroid/view/ViewGroup;->addView(Landroid/view/View;)V
+                    # Time-sync parallelization is opt-in, default OFF.
+                    new-instance v0, Landroid/widget/Switch;
+                    invoke-direct {v0, p0}, Landroid/widget/Switch;-><init>(Landroid/content/Context;)V
+                    const-string v1, "サーバー時刻同期を非同期化（実験・時刻ずれ注意・次回起動）"
+                    invoke-virtual {v0, v1}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
+                    const/16 v1, 0x28
+                    invoke-virtual {v0, v1, v1, v1, v1}, Landroid/view/View;->setPadding(IIII)V
+                    const-string v1, "async_server_time_sync"
+                    invoke-virtual {v0, v1}, Landroid/view/View;->setTag(Ljava/lang/Object;)V
+                    const-string v1, "morphe.tver.settings"
+                    const/4 v2, 0x0
+                    invoke-virtual {p0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                    move-result-object v1
+                    const-string v2, "async_server_time_sync"
+                    const/4 v3, 0x0
+                    invoke-interface {v1, v2, v3}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                    move-result v3
+                    invoke-virtual {v0, v3}, Landroid/widget/CompoundButton;->setChecked(Z)V
+                    invoke-virtual {v0, p0}, Landroid/widget/CompoundButton;->setOnCheckedChangeListener(Landroid/widget/CompoundButton${'$'}OnCheckedChangeListener;)V
+                    invoke-virtual {v7, v0}, Landroid/view/ViewGroup;->addView(Landroid/view/View;)V
                     new-instance v0, Landroid/widget/Button;
                     invoke-direct {v0, p0}, Landroid/widget/Button;-><init>(Landroid/content/Context;)V
                     const-string v1, "起動ログを表示・コピー"
@@ -1094,8 +1114,20 @@ val tverPipPatch = bytecodePatch(
                     const-string v2, "parallel_remote_tverapp"
                     invoke-virtual {v2, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
                     move-result v1
-                    if-eqz v1, :pip_setting
+                    if-eqz v1, :clock_setting
                     const-string v1, "parallel_remote_tverapp"
+                    invoke-interface {v0, v1, p2}, Landroid/content/SharedPreferences${'$'}Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences${'$'}Editor;
+                    move-result-object v0
+                    invoke-interface {v0}, Landroid/content/SharedPreferences${'$'}Editor;->apply()V
+                    return-void
+                    :clock_setting
+                    invoke-virtual {p1}, Landroid/view/View;->getTag()Ljava/lang/Object;
+                    move-result-object v1
+                    const-string v2, "async_server_time_sync"
+                    invoke-virtual {v2, v1}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+                    move-result v1
+                    if-eqz v1, :pip_setting
+                    const-string v1, "async_server_time_sync"
                     invoke-interface {v0, v1, p2}, Landroid/content/SharedPreferences${'$'}Editor;->putBoolean(Ljava/lang/String;Z)Landroid/content/SharedPreferences${'$'}Editor;
                     move-result-object v0
                     invoke-interface {v0}, Landroid/content/SharedPreferences${'$'}Editor;->apply()V
@@ -1924,6 +1956,100 @@ val tverPipPatch = bytecodePatch(
             // inserting first would shift original instruction indices by one.
             sdkClockMethod.addInstructions(
                 0, "invoke-static {}, $vmType->morpheTimeSyncAttempt()V",
+            )
+
+            // EXPERIMENTAL, default OFF. Clock b.c starts with device
+            // wall time; the original blocking 3-retry sync catches errors.
+            // Only when opted in: run the original SDK clock sync on its own
+            // thread, allowing the genuine Home initialization to proceed.
+            // Time-sensitive SDK operations may observe device time before
+            // the background sync finishes (risk if device clock is wrong).
+            check(!sdkClockCls.interfaces.contains("Ljava/lang/Runnable;"))
+            check(sdkClockCls.methods.none {
+                it.name == "run" && it.parameterTypes.isEmpty()
+            })
+            sdkClockCls.interfaces.add("Ljava/lang/Runnable;")
+            sdkClockCls.methods.add(ImmutableMethod(
+                sdkClockSyncType, "run", emptyList(), "V",
+                AccessFlags.PUBLIC.value,
+                null, null, MutableMethodImplementation(2),
+            ).toMutable().apply { addInstructions(0, """
+                const-string v0, "SDK_CURRENT_TIME_BACKGROUND_BEGIN"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                const/4 v0, 0x3
+                invoke-virtual {p0, v0}, $sdkClockSyncType->a(I)V
+                const-string v0, "SDK_CURRENT_TIME_BACKGROUND_DONE"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                return-void
+            """.trimIndent()) })
+            val dispatchClockName = "morpheStartClockSyncMaybeAsync"
+            check(vmCls.methods.none { it.name == dispatchClockName })
+            vmCls.methods.add(ImmutableMethod(
+                vmType, dispatchClockName,
+                listOf(
+                    ImmutableMethodParameter(sdkClockSyncType, null, null),
+                    ImmutableMethodParameter("I", null, null),
+                ), "V",
+                AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                null, null, MutableMethodImplementation(5),
+            ).toMutable().apply { addInstructions(0, """
+                sget-object v0, Lb/j;->c:Landroid/content/Context;
+                if-eqz v0, :original_clock_sync
+                const-string v1, "morphe.tver.settings"
+                const/4 v2, 0x0
+                invoke-virtual {v0, v1, v2}, Landroid/content/Context;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
+                move-result-object v0
+                const-string v1, "async_server_time_sync"
+                invoke-interface {v0, v1, v2}, Landroid/content/SharedPreferences;->getBoolean(Ljava/lang/String;Z)Z
+                move-result v0
+                if-eqz v0, :original_clock_sync
+                const-string v0, "SDK_CURRENT_TIME_BACKGROUND_SCHEDULED"
+                invoke-static {v0}, $vmType->morpheLogStartup(Ljava/lang/String;)V
+                new-instance v0, Ljava/lang/Thread;
+                invoke-direct {v0, p0}, Ljava/lang/Thread;-><init>(Ljava/lang/Runnable;)V
+                const-string v1, "MorpheSDKClock"
+                invoke-virtual {v0, v1}, Ljava/lang/Thread;->setName(Ljava/lang/String;)V
+                invoke-virtual {v0}, Ljava/lang/Thread;->start()V
+                return-void
+                :original_clock_sync
+                invoke-virtual {p0, p1}, $sdkClockSyncType->a(I)V
+                return-void
+            """.trimIndent()) })
+            val sdkInitMethod = sdkInternalCls.methods.single {
+                it.name == "a" &&
+                    it.parameterTypes.map { t -> t.toString() } ==
+                        listOf("Landroid/content/Context;") &&
+                    it.returnType == "V"
+            }
+            val sdkInitCalls = requireNotNull(sdkInitMethod.implementation).instructions.toList()
+            val sdkClockStartupCalls = sdkInitCalls.indices.filter { index ->
+                val instruction = sdkInitCalls[index]
+                val ref = (instruction as? ReferenceInstruction)?.reference as? MethodReference
+                instruction.opcode == Opcode.INVOKE_VIRTUAL &&
+                    ref?.definingClass == sdkClockSyncType &&
+                    ref.name == "a" &&
+                    ref.parameterTypes.map { p -> p.toString() } == listOf("I") &&
+                    ref.returnType == "V"
+            }
+            check(sdkClockStartupCalls.size == 1) {
+                "Expected one SDK startup clock sync call, found " +
+                    sdkClockStartupCalls.size
+            }
+            val oldClockStartupCall =
+                sdkInitCalls[sdkClockStartupCalls.single()] as Instruction35c
+            check(oldClockStartupCall.registerCount == 2)
+            requireNotNull(
+                sdkInitMethod.implementation as? MutableMethodImplementation
+            ).replaceInstruction(
+                sdkClockStartupCalls.single(),
+                BuilderInstruction35c(
+                    Opcode.INVOKE_STATIC, 2,
+                    oldClockStartupCall.registerC, oldClockStartupCall.registerD,
+                    0, 0, 0,
+                    ImmutableMethodReference(
+                        vmType, dispatchClockName, listOf(sdkClockSyncType, "I"), "V",
+                    ),
+                ),
             )
 
             // TVer SDK b.t holds a 24-hour cached salt in tversdk_prefs.
