@@ -229,8 +229,47 @@ public final class NicoOverlayBridge {
             ];
             let threads=null;
             let clock={ms:0,stamp:performance.now(),playing:false,rate:1,ad:false,seeking:false};
+            let lastReportedMs=null, lastSeekGeneration=null;
+
+            // PlaybackState positionMs can update much less often than our 200ms
+            // sampling interval. Re-anchoring to the same stale value causes
+            // comments to bounce right, then jump left at the next real update.
+            function interpolatedMs(now){
+                if(!clock.playing||clock.ad||clock.seeking)return clock.ms;
+                return clock.ms+Math.max(0,now-clock.stamp)*clock.rate;
+            }
             function update(ms,playing,rate,ad,seeking,generation){
-                clock={ms,stamp:performance.now(),playing:!!playing,rate:rate>0?rate:1,ad:!!ad,seeking:!!seeking};
+                if(!Number.isFinite(ms))return;
+                const now=performance.now();
+                ms=Math.max(0,ms);
+                const running=!!playing&&!ad&&!seeking;
+                const nextRate=Number.isFinite(rate)&&rate>0?rate:1;
+                const predicted=interpolatedMs(now);
+                const fresh=lastReportedMs===null||ms!==lastReportedMs;
+                const seekChanged=lastSeekGeneration!==null&&generation!==lastSeekGeneration;
+                const seekEnded=clock.seeking&&!seeking;
+                let next=predicted;
+
+                if(lastReportedMs===null||seekChanged||seekEnded){
+                    // First sample or an explicit discontinuity: snap to TVer.
+                    next=ms;
+                }else if(fresh){
+                    const drift=ms-predicted;
+                    if(ms<lastReportedMs-900||Math.abs(drift)>2400){
+                        // Handle a seek even if the seek flag was not observed.
+                        next=ms;
+                    }else if(running&&clock.playing){
+                        // Preserve forward motion. Small positive drift is
+                        // corrected gradually; stale/rounded samples never
+                        // push scrolling comments backwards.
+                        next=predicted+Math.min(30,Math.max(0,drift)*0.12);
+                    }else{
+                        next=ms;
+                    }
+                }
+                lastReportedMs=ms;
+                lastSeekGeneration=generation;
+                clock={ms:next,stamp:now,playing:running,rate:nextRate,ad:!!ad,seeking:!!seeking};
             }
             function setThreads(input){
                 if(!Array.isArray(input)){threads=null;return;}
