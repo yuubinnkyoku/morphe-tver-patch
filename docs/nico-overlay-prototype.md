@@ -27,7 +27,7 @@ The Nico overlay patch now depends on the PiP patch, which supplies TVer's exist
 - `動画上にFPSを表示する`: show/hide the small live FPS badge (default ON).
 - `FPS計測ログを表示・コピー`: inspect the recent FPS statistics and copy all of them to the clipboard.
 
-The last twelve 5-second samples are saved in SharedPreferences after each window so they are readable in settings **even after leaving playback or restarting TVer**. Logging continues when the FPS badge is hidden. Turning off comments stops their Canvas rendering; the frame-timing probe remains running. The video HUD itself still offers tap-to-show/copy and long-press copy.
+The last twelve 5-second samples are saved in SharedPreferences after each window so they are readable in settings **even after leaving playback or restarting TVer**. Logging continues when the FPS badge is hidden. Turning off comments stops their Canvas rendering; the frame-timing probe remains running. The screen refresh rate and FPS statistics measure the overlay, not the decoded TVer video stream itself. If playback has not yet been opened, the saved report may show an older session. The video HUD itself still offers tap-to-show/copy and long-press copy.
 
 **Scope:** These are separate runtime toggles for the experimental comment view and FPS HUD, not a Morphe patch selection toggle. To remove the injected code entirely, disable the Nico overlay patch when repatching.
 
