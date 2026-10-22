@@ -52,6 +52,7 @@ public final class NicoOverlayBridge {
     private static final String FPS_VISIBLE = "nico_fps_hud_visible";
     private static final String PREFER_120FPS = "nico_prefer_120fps";
     private static final String WINDOW_PREFER_120HZ = "nico_window_prefer_120hz";
+    private static final String WINDOW_MODE_144HZ = "nico_window_mode_144hz";
     private static final String SAVED_FPS_REPORT = "nico_fps_last_report";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static WeakReference<ViewGroup> hostRef = new WeakReference<>(null);
@@ -65,6 +66,10 @@ public final class NicoOverlayBridge {
     private static WeakReference<Activity> windowActivityRef = new WeakReference<>(null);
     private static float previousWindowRefreshRate;
     private static boolean windowPreferenceApplied;
+    private static WeakReference<Activity> modeActivityRef = new WeakReference<>(null);
+    private static int previousWindowModeId;
+    private static int requestedWindowModeId;
+    private static float requestedWindowModeHz;
     private static Object flow;
     private static boolean ready;
     private static boolean ticking;
@@ -160,6 +165,7 @@ public final class NicoOverlayBridge {
         stateClass = null;
         position = phase = rate = ad = seeking = generation = null;
         // Keep FPS history across playback -> settings navigation.
+        restoreDisplayModePreference();
         restoreWindowPreference();
         requestedOverlayHz = 0f;
         TextView badge = badgeRef.get();
@@ -296,11 +302,18 @@ public final class NicoOverlayBridge {
         int windowModeId = windowAttrs == null ? 0 : windowAttrs.preferredDisplayModeId;
         boolean windowRequested = windowPreferenceApplied && activity != null
             && activity == windowActivityRef.get() && windowHz == 120f;
+        boolean mode144Requested = activity != null && activity == modeActivityRef.get()
+            && requestedWindowModeId != 0 && windowModeId == requestedWindowModeId;
+        int activeDisplayModeId = displayNow == null || displayNow.getMode() == null ? 0
+            : displayNow.getMode().getModeId();
         String sample = stats + String.format(Locale.ROOT,
             " request120=%s requestedHz=%.1f displayHzNow=%.1f displayModeHz=%.1f"
-            + " window120=%s windowPreferredHz=%.1f windowModeId=%d",
+            + " window120=%s windowPreferredHz=%.1f windowModeId=%d"
+            + " mode144=%s requestedModeId=%d requestedModeHz=%.1f displayModeIdNow=%d",
             requestedOverlayHz == 120f, requestedOverlayHz, refreshNow, modeNow,
-            windowRequested, windowHz, windowModeId);
+            windowRequested, windowHz, windowModeId,
+            mode144Requested, requestedWindowModeId, requestedWindowModeHz,
+            activeDisplayModeId);
         latestPerf = sample;
         perfHistory.addLast(sample);
         while (perfHistory.size() > PERF_HISTORY_LIMIT) perfHistory.removeFirst();
@@ -328,6 +341,9 @@ public final class NicoOverlayBridge {
         if (host == null) return;
         boolean showComments = host.getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(COMMENTS_VISIBLE, true);
+        // A preferred display mode overrides the window refresh-rate hint.
+        // Keep the two experiments independent for A/B testing.
+        updateDisplayModePreference(host.getContext());
         updateWindowPreference(host.getContext());
         if (web != null && web.getParent() == host) {
             // API 35+: per-View refresh preference, not an FPS guarantee.
@@ -360,6 +376,107 @@ public final class NicoOverlayBridge {
         Log.i(TAG, String.format(Locale.ROOT,
             "Nico frame-rate preference %s (requested=%.1fHz, actual frame rate not guaranteed)",
             prefer120 ? "ON" : "OFF", web.getRequestedFrameRate()));
+    }
+
+    /**
+     * Experimental 144Hz mode request for TVer's video window.
+     * Only choose a supported 144Hz mode at the active physical resolution.
+     * Preserve TVer's original preferredDisplayModeId, restoring it on OFF
+     * and when the playback view is released. This does NOT override the
+     * system's developer-option setting or guarantee that Android obeys.
+     */
+    private static void updateDisplayModePreference(Context context) {
+        boolean enabled = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(WINDOW_MODE_144HZ, false);
+        Activity activity = findActivity(context);
+        if (!enabled || activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            restoreDisplayModePreference();
+            return;
+        }
+        if (requestedWindowModeId != 0 && modeActivityRef.get() != activity) {
+            restoreDisplayModePreference();
+        }
+        try {
+            ViewGroup host = hostRef.get();
+            Display display = host == null ? null : host.getDisplay();
+            if (display == null) display = activity.getDisplay();
+            if (display == null || display.getMode() == null) {
+                Log.i(TAG, "144Hz display-mode request skipped: no attached display");
+                return;
+            }
+            Display.Mode current = display.getMode();
+            Display.Mode target = null;
+            for (Display.Mode mode : display.getSupportedModes()) {
+                if (mode.getPhysicalWidth() != current.getPhysicalWidth()
+                    || mode.getPhysicalHeight() != current.getPhysicalHeight()) continue;
+                float diff = Math.abs(mode.getRefreshRate() - 144f);
+                if (diff <= 1f && (target == null
+                    || diff < Math.abs(target.getRefreshRate() - 144f))) target = mode;
+            }
+            if (target == null) {
+                restoreDisplayModePreference();
+                Log.i(TAG, String.format(Locale.ROOT,
+                    "144Hz display-mode request skipped: no supported 144Hz mode at %dx%d",
+                    current.getPhysicalWidth(), current.getPhysicalHeight()));
+                return;
+            }
+            Window window = activity.getWindow();
+            if (window == null) return;
+            WindowManager.LayoutParams attrs = window.getAttributes();
+            int targetId = target.getModeId();
+            if (requestedWindowModeId == 0) {
+                previousWindowModeId = attrs.preferredDisplayModeId;
+                modeActivityRef = new WeakReference<>(activity);
+            } else if (attrs.preferredDisplayModeId != requestedWindowModeId) {
+                // Another component changed this Window while the experiment
+                // was active. Do not overwrite its more recent preference.
+                Log.i(TAG, "144Hz mode request displaced by another Window preference");
+                modeActivityRef = new WeakReference<>(null);
+                previousWindowModeId = 0;
+                requestedWindowModeId = 0;
+                requestedWindowModeHz = 0f;
+                return;
+            }
+            if (attrs.preferredDisplayModeId != targetId) {
+                attrs.preferredDisplayModeId = targetId;
+                window.setAttributes(attrs);
+            }
+            if (requestedWindowModeId != targetId) {
+                Log.i(TAG, String.format(Locale.ROOT,
+                    "Window preferredDisplayModeId requested=%d (%.1fHz %dx%d); previous=%d",
+                    targetId, target.getRefreshRate(), target.getPhysicalWidth(),
+                    target.getPhysicalHeight(), previousWindowModeId));
+            }
+            requestedWindowModeId = targetId;
+            requestedWindowModeHz = target.getRefreshRate();
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Could not request Window 144Hz display mode", error);
+        }
+    }
+
+    private static void restoreDisplayModePreference() {
+        Activity activity = modeActivityRef.get();
+        if (requestedWindowModeId != 0 && activity != null) {
+            try {
+                Window window = activity.getWindow();
+                if (window != null) {
+                    WindowManager.LayoutParams attrs = window.getAttributes();
+                    // Do not undo a newer preference from TVer or another patch.
+                    if (attrs.preferredDisplayModeId == requestedWindowModeId) {
+                        attrs.preferredDisplayModeId = previousWindowModeId;
+                        window.setAttributes(attrs);
+                        Log.i(TAG, "Restored previous Window preferredDisplayModeId="
+                            + previousWindowModeId);
+                    }
+                }
+            } catch (RuntimeException error) {
+                Log.w(TAG, "Could not restore Window display mode", error);
+            }
+        }
+        modeActivityRef = new WeakReference<>(null);
+        previousWindowModeId = 0;
+        requestedWindowModeId = 0;
+        requestedWindowModeHz = 0f;
     }
 
     /**
@@ -520,6 +637,8 @@ public final class NicoOverlayBridge {
             PREFER_120FPS, false));
         panel.addView(makeSettingSwitch(activity, "動画再生中はWindow全体に120Hz要求（実験）",
             WINDOW_PREFER_120HZ, false));
+        panel.addView(makeSettingSwitch(activity, "動画再生中に144Hz表示モードを優先（実験・電池消費増）",
+            WINDOW_MODE_144HZ, false));
 
         android.widget.Button copy = new android.widget.Button(activity);
         copy.setText("FPS計測ログを表示・コピー");
