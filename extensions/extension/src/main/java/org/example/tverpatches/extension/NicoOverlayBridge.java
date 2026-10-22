@@ -19,6 +19,8 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
@@ -49,6 +51,7 @@ public final class NicoOverlayBridge {
     private static final String COMMENTS_VISIBLE = "nico_comments_visible";
     private static final String FPS_VISIBLE = "nico_fps_hud_visible";
     private static final String PREFER_120FPS = "nico_prefer_120fps";
+    private static final String WINDOW_PREFER_120HZ = "nico_window_prefer_120hz";
     private static final String SAVED_FPS_REPORT = "nico_fps_last_report";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static WeakReference<ViewGroup> hostRef = new WeakReference<>(null);
@@ -59,6 +62,9 @@ public final class NicoOverlayBridge {
     private static String latestPerf;
     private static float displayHz;
     private static float requestedOverlayHz;
+    private static WeakReference<Activity> windowActivityRef = new WeakReference<>(null);
+    private static float previousWindowRefreshRate;
+    private static boolean windowPreferenceApplied;
     private static Object flow;
     private static boolean ready;
     private static boolean ticking;
@@ -154,6 +160,7 @@ public final class NicoOverlayBridge {
         stateClass = null;
         position = phase = rate = ad = seeking = generation = null;
         // Keep FPS history across playback -> settings navigation.
+        restoreWindowPreference();
         requestedOverlayHz = 0f;
         TextView badge = badgeRef.get();
         if (badge != null) {
@@ -282,9 +289,18 @@ public final class NicoOverlayBridge {
         float refreshNow = displayNow == null ? 0f : displayNow.getRefreshRate();
         float modeNow = displayNow == null || displayNow.getMode() == null ? 0f
             : displayNow.getMode().getRefreshRate();
+        Activity activity = findActivity(host.getContext());
+        WindowManager.LayoutParams windowAttrs = activity == null ? null
+            : activity.getWindow().getAttributes();
+        float windowHz = windowAttrs == null ? 0f : windowAttrs.preferredRefreshRate;
+        int windowModeId = windowAttrs == null ? 0 : windowAttrs.preferredDisplayModeId;
+        boolean windowRequested = windowPreferenceApplied && activity != null
+            && activity == windowActivityRef.get() && windowHz == 120f;
         String sample = stats + String.format(Locale.ROOT,
-            " request120=%s requestedHz=%.1f displayHzNow=%.1f displayModeHz=%.1f",
-            requestedOverlayHz == 120f, requestedOverlayHz, refreshNow, modeNow);
+            " request120=%s requestedHz=%.1f displayHzNow=%.1f displayModeHz=%.1f"
+            + " window120=%s windowPreferredHz=%.1f windowModeId=%d",
+            requestedOverlayHz == 120f, requestedOverlayHz, refreshNow, modeNow,
+            windowRequested, windowHz, windowModeId);
         latestPerf = sample;
         perfHistory.addLast(sample);
         while (perfHistory.size() > PERF_HISTORY_LIMIT) perfHistory.removeFirst();
@@ -312,6 +328,7 @@ public final class NicoOverlayBridge {
         if (host == null) return;
         boolean showComments = host.getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(COMMENTS_VISIBLE, true);
+        updateWindowPreference(host.getContext());
         if (web != null && web.getParent() == host) {
             // API 35+: per-View refresh preference, not an FPS guarantee.
             // Request the faster display only while comments are enabled.
@@ -343,6 +360,75 @@ public final class NicoOverlayBridge {
         Log.i(TAG, String.format(Locale.ROOT,
             "Nico frame-rate preference %s (requested=%.1fHz, actual frame rate not guaranteed)",
             prefer120 ? "ON" : "OFF", web.getRequestedFrameRate()));
+    }
+
+    /**
+     * Request 120Hz at the Activity Window level, independently of the
+     * WebView's per-View hint. This is a preference, not a forced mode.
+     * Preserve a pre-existing app preference and restore it on release.
+     */
+    private static void updateWindowPreference(Context context) {
+        boolean enabled = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(WINDOW_PREFER_120HZ, false);
+        Activity activity = findActivity(context);
+        if (!enabled || activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            restoreWindowPreference();
+            return;
+        }
+        if (windowPreferenceApplied && windowActivityRef.get() != activity) {
+            restoreWindowPreference();
+        }
+        try {
+            Window window = activity.getWindow();
+            if (window == null) return;
+            WindowManager.LayoutParams attrs = window.getAttributes();
+            // A mode ID overrides preferredRefreshRate. Do not overwrite the
+            // host application's display-mode preference in this experiment.
+            if (attrs.preferredDisplayModeId != 0) {
+                Log.i(TAG, "Window 120Hz hint skipped: host has preferredDisplayModeId="
+                    + attrs.preferredDisplayModeId);
+                return;
+            }
+            if (!windowPreferenceApplied) {
+                previousWindowRefreshRate = attrs.preferredRefreshRate;
+                windowActivityRef = new WeakReference<>(activity);
+                windowPreferenceApplied = true;
+            }
+            if (Float.compare(attrs.preferredRefreshRate, 120f) != 0) {
+                attrs.preferredRefreshRate = 120f;
+                window.setAttributes(attrs);
+                Log.i(TAG, String.format(Locale.ROOT,
+                    "Window preferredRefreshRate requested=120Hz previous=%.1fHz",
+                    previousWindowRefreshRate));
+            }
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Could not set Window 120Hz preference", error);
+        }
+    }
+
+    private static void restoreWindowPreference() {
+        Activity activity = windowActivityRef.get();
+        if (windowPreferenceApplied && activity != null) {
+            try {
+                Window window = activity.getWindow();
+                if (window != null) {
+                    WindowManager.LayoutParams attrs = window.getAttributes();
+                    // Avoid clobbering a later setting from TVer or another patch.
+                    if (Float.compare(attrs.preferredRefreshRate, 120f) == 0) {
+                        attrs.preferredRefreshRate = previousWindowRefreshRate;
+                        window.setAttributes(attrs);
+                        Log.i(TAG, String.format(Locale.ROOT,
+                            "Restored previous Window preferredRefreshRate=%.1fHz",
+                            previousWindowRefreshRate));
+                    }
+                }
+            } catch (RuntimeException error) {
+                Log.w(TAG, "Could not restore Window refresh preference", error);
+            }
+        }
+        windowActivityRef = new WeakReference<>(null);
+        previousWindowRefreshRate = 0f;
+        windowPreferenceApplied = false;
     }
 
     private static String perfReport(Context context) {
@@ -432,6 +518,8 @@ public final class NicoOverlayBridge {
             FPS_VISIBLE, true));
         panel.addView(makeSettingSwitch(activity, "コメント描画を120fps優先（実験・電池消費増の可能性）",
             PREFER_120FPS, false));
+        panel.addView(makeSettingSwitch(activity, "動画再生中はWindow全体に120Hz要求（実験）",
+            WINDOW_PREFER_120HZ, false));
 
         android.widget.Button copy = new android.widget.Button(activity);
         copy.setText("FPS計測ログを表示・コピー");
