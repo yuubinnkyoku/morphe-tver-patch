@@ -1,3 +1,9 @@
+## [1.2.0-dev.9](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.8...v1.2.0-dev.9) (2026-10-22)
+
+### ✨ New Features
+
+* add opt-in Media3 video Surface frame-rate hint suppression ([2310174](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/2310174cb2e0924a7fd9b30a60c97245e23636d9))
+
 ## [1.2.0-dev.8](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.7...v1.2.0-dev.8) (2026-10-22)
 
 ### ✨ New Features
