@@ -1,3 +1,9 @@
+## [1.2.0-dev.8](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.7...v1.2.0-dev.8) (2026-10-22)
+
+### ✨ New Features
+
+* add opt-in 144Hz preferred display mode for TVer playback ([ec5999e](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/ec5999e90eaf7132dd5eada3a6e15e1723f9064d))
+
 ## [1.2.0-dev.7](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.6...v1.2.0-dev.7) (2026-10-22)
 
 ### ✨ New Features
