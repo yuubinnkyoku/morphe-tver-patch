@@ -26,6 +26,51 @@ val tverNicoCommentOverlayPatch = bytecodePatch(
         val hostType = "Ljp/hamitv/hamiand1/feature/episode/ui/screen/video/EpisodePersistentPlayerHostView;"
         val bridgeType = "Lorg/example/tverpatches/extension/NicoOverlayBridge;"
 
+        // Media3 VideoFrameReleaseHelper is used by Streaks Player's
+        // jp.logiclogic.streaksplayer.ext.video.e (TVer 7.2.1 / classes6.dex).
+        // Its Api30 helper performs the actual Surface.setFrameRate() call.
+        // Hook both the constructor (for a valid application Context) and the
+        // final frame-rate hint.  With the setting OFF the original float is
+        // forwarded unchanged, preserving vanilla video playback behaviour.
+        val frameHelperType = "Landroidx/media3/exoplayer/video/VideoFrameReleaseHelper;"
+        val helper = mutableClassDefBy(classDefBy(frameHelperType))
+        val helperConstructor = helper.methods.single {
+            it.name == "<init>" &&
+                it.parameterTypes.map(CharSequence::toString) ==
+                    listOf("Landroid/content/Context;")
+        }
+        val ctorImpl = requireNotNull(helperConstructor.implementation) {
+            "VideoFrameReleaseHelper(Context) constructor has no code"
+        }
+        val superCall = ctorImpl.instructions.indexOfFirst { instruction ->
+            val method = (instruction as? ReferenceInstruction)?.reference as? MethodReference
+            method?.definingClass == "Ljava/lang/Object;" && method.name == "<init>"
+        }
+        check(superCall >= 0) {
+            "VideoFrameReleaseHelper constructor super call not found"
+        }
+        helperConstructor.addInstructions(superCall + 1,
+            "invoke-static {p1}, $bridgeType->rememberVideoFrameRateContext(Landroid/content/Context;)V")
+
+        val api30Type = "Landroidx/media3/exoplayer/video/VideoFrameReleaseHelper" + "\$Api30;"
+        val api30 = mutableClassDefBy(classDefBy(api30Type))
+        val surfaceHint = api30.methods.single {
+            it.name == "setSurfaceFrameRate" &&
+                it.parameterTypes.map(CharSequence::toString) ==
+                    listOf("Landroid/view/Surface;", "F") &&
+                it.returnType.toString() == "V"
+        }
+        check(surfaceHint.implementation != null) {
+            "Media3 Api30.setSurfaceFrameRate(Surface,float) has no code"
+        }
+        // p1 is the float argument. The bridge rewrites 29.97Hz -> 0Hz
+        // only when explicitly enabled, which asks SurfaceFlinger to clear
+        // its frame-rate hint instead of forcing another playback cadence.
+        surfaceHint.addInstructions(0, """
+            invoke-static {p1}, $bridgeType->filterVideoSurfaceFrameRate(F)F
+            move-result p1
+        """.trimIndent())
+
         val cls = mutableClassDefBy(classDefBy(surfaceType))
         val update = cls.methods.single {
             it.name == "EpisodePersistentPlayerSurface\$lambda\$5\$0" &&
