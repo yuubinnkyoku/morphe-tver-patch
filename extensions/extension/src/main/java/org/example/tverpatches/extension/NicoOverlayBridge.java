@@ -48,6 +48,7 @@ public final class NicoOverlayBridge {
     private static final String PREFS = "morphe.tver.settings";
     private static final String COMMENTS_VISIBLE = "nico_comments_visible";
     private static final String FPS_VISIBLE = "nico_fps_hud_visible";
+    private static final String PREFER_120FPS = "nico_prefer_120fps";
     private static final String SAVED_FPS_REPORT = "nico_fps_last_report";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static WeakReference<ViewGroup> hostRef = new WeakReference<>(null);
@@ -57,6 +58,7 @@ public final class NicoOverlayBridge {
     private static final int PERF_HISTORY_LIMIT = 12;
     private static String latestPerf;
     private static float displayHz;
+    private static float requestedOverlayHz;
     private static Object flow;
     private static boolean ready;
     private static boolean ticking;
@@ -152,6 +154,7 @@ public final class NicoOverlayBridge {
         stateClass = null;
         position = phase = rate = ad = seeking = generation = null;
         // Keep FPS history across playback -> settings navigation.
+        requestedOverlayHz = 0f;
         TextView badge = badgeRef.get();
         if (badge != null) {
             badge.setOnClickListener(null);
@@ -275,8 +278,15 @@ public final class NicoOverlayBridge {
         ViewGroup host = hostRef.get();
         if (webRef.get() != web || host == null || stats.length() > 1200) return;
         if (!stats.startsWith("fps=") || !stats.contains("p95ms=")) return;
-        latestPerf = stats;
-        perfHistory.addLast(stats);
+        Display displayNow = web.getDisplay();
+        float refreshNow = displayNow == null ? 0f : displayNow.getRefreshRate();
+        float modeNow = displayNow == null || displayNow.getMode() == null ? 0f
+            : displayNow.getMode().getRefreshRate();
+        String sample = stats + String.format(Locale.ROOT,
+            " request120=%s requestedHz=%.1f displayHzNow=%.1f displayModeHz=%.1f",
+            requestedOverlayHz == 120f, requestedOverlayHz, refreshNow, modeNow);
+        latestPerf = sample;
+        perfHistory.addLast(sample);
         while (perfHistory.size() > PERF_HISTORY_LIMIT) perfHistory.removeFirst();
         updateFpsBadge();
         // Save one compact report every five seconds. It remains available
@@ -302,12 +312,37 @@ public final class NicoOverlayBridge {
         if (host == null) return;
         boolean showComments = host.getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(COMMENTS_VISIBLE, true);
-        if (ready && web != null && web.getParent() == host) {
-            web.evaluateJavascript(
-                "window.MorpheNico&&window.MorpheNico.setVisible(" +
-                (showComments ? "true" : "false") + ");", null);
+        if (web != null && web.getParent() == host) {
+            // API 35+: per-View refresh preference, not an FPS guarantee.
+            // Request the faster display only while comments are enabled.
+            boolean request120 = showComments && host.getContext()
+                .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(PREFER_120FPS, false);
+            updateRequestedFrameRate(web, request120);
+            if (ready) {
+                web.evaluateJavascript(
+                    "window.MorpheNico&&window.MorpheNico.setVisible(" +
+                    (showComments ? "true" : "false") + ");", null);
+            }
         }
         updateFpsBadge();
+    }
+
+    private static void updateRequestedFrameRate(PassThroughWebView web, boolean prefer120) {
+        if (Build.VERSION.SDK_INT < 35) {
+            requestedOverlayHz = 0f;
+            return;
+        }
+        float rate = prefer120 ? 120f : View.REQUESTED_FRAME_RATE_CATEGORY_DEFAULT;
+        if (web.getRequestedFrameRate() == rate) {
+            requestedOverlayHz = prefer120 ? 120f : 0f;
+            return;
+        }
+        web.setRequestedFrameRate(rate);
+        requestedOverlayHz = prefer120 ? 120f : 0f;
+        Log.i(TAG, String.format(Locale.ROOT,
+            "Nico frame-rate preference %s (requested=%.1fHz, actual frame rate not guaranteed)",
+            prefer120 ? "ON" : "OFF", web.getRequestedFrameRate()));
     }
 
     private static String perfReport(Context context) {
@@ -395,6 +430,8 @@ public final class NicoOverlayBridge {
             COMMENTS_VISIBLE, true));
         panel.addView(makeSettingSwitch(activity, "動画上にFPSを表示する",
             FPS_VISIBLE, true));
+        panel.addView(makeSettingSwitch(activity, "コメント描画を120fps優先（実験・電池消費増の可能性）",
+            PREFER_120FPS, false));
 
         android.widget.Button copy = new android.widget.Button(activity);
         copy.setText("FPS計測ログを表示・コピー");
