@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-22T04:13:22",
-  "description": "## [1.2.0-dev.6](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.5...v1.2.0-dev.6) (2026-10-22)\n\n### ✨ New Features\n\n* add opt-in 120fps preference for Nico WebView comments ([e6dfb11](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/e6dfb11fca3570210fe41011cd236d0d2a904405))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.2.0-dev.6/patches-1.2.0-dev.6.mpp",
+  "created_at": "2026-10-22T06:36:18",
+  "description": "## [1.2.0-dev.7](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.6...v1.2.0-dev.7) (2026-10-22)\n\n### ✨ New Features\n\n* add opt-in Window 120Hz preference during Nico playback ([816ee35](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/816ee35144f485a05a32076ef725ca65b4f4e4df))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.2.0-dev.7/patches-1.2.0-dev.7.mpp",
   "signature_download_url": "",
-  "version": "1.2.0-dev.6"
+  "version": "1.2.0-dev.7"
 }

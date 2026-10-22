@@ -1,3 +1,9 @@
+## [1.2.0-dev.7](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.6...v1.2.0-dev.7) (2026-10-22)
+
+### ✨ New Features
+
+* add opt-in Window 120Hz preference during Nico playback ([816ee35](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/816ee35144f485a05a32076ef725ca65b4f4e4df))
+
 ## [1.2.0-dev.6](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.5...v1.2.0-dev.6) (2026-10-22)
 
 ### ✨ New Features
