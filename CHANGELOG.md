@@ -1,3 +1,9 @@
+## [1.2.0-dev.6](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.5...v1.2.0-dev.6) (2026-10-22)
+
+### ✨ New Features
+
+* add opt-in 120fps preference for Nico WebView comments ([e6dfb11](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/e6dfb11fca3570210fe41011cd236d0d2a904405))
+
 ## [1.2.0-dev.5](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.4...v1.2.0-dev.5) (2026-10-21)
 
 ### ✨ New Features
