@@ -53,6 +53,7 @@ public final class NicoOverlayBridge {
     private static final String PREFER_120FPS = "nico_prefer_120fps";
     private static final String WINDOW_PREFER_120HZ = "nico_window_prefer_120hz";
     private static final String WINDOW_MODE_144HZ = "nico_window_mode_144hz";
+    private static final String VIDEO_SURFACE_RATE_OFF = "nico_video_surface_framerate_off";
     private static final String SAVED_FPS_REPORT = "nico_fps_last_report";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static WeakReference<ViewGroup> hostRef = new WeakReference<>(null);
@@ -70,6 +71,13 @@ public final class NicoOverlayBridge {
     private static int previousWindowModeId;
     private static int requestedWindowModeId;
     private static float requestedWindowModeHz;
+    // Captured directly from Media3's VideoFrameReleaseHelper(Context) constructor.
+    // Its Surface.setFrameRate hints may be sent before the overlay View is bound.
+    private static volatile Context videoFrameRateContext;
+    private static volatile float lastSurfaceFrameRateRequested = Float.NaN;
+    private static volatile float lastSurfaceFrameRateSent = Float.NaN;
+    private static volatile long surfaceFrameRateHintCount;
+    private static volatile long surfaceFrameRateSuppressedCount;
     private static Object flow;
     private static boolean ready;
     private static boolean ticking;
@@ -306,14 +314,21 @@ public final class NicoOverlayBridge {
             && requestedWindowModeId != 0 && windowModeId == requestedWindowModeId;
         int activeDisplayModeId = displayNow == null || displayNow.getMode() == null ? 0
             : displayNow.getMode().getModeId();
+        boolean surfaceHintOff = host.getContext()
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(VIDEO_SURFACE_RATE_OFF, false);
         String sample = stats + String.format(Locale.ROOT,
             " request120=%s requestedHz=%.1f displayHzNow=%.1f displayModeHz=%.1f"
             + " window120=%s windowPreferredHz=%.1f windowModeId=%d"
-            + " mode144=%s requestedModeId=%d requestedModeHz=%.1f displayModeIdNow=%d",
+            + " mode144=%s requestedModeId=%d requestedModeHz=%.1f displayModeIdNow=%d"
+            + " surfaceHintOff=%s surfaceFpsWanted=%.2f surfaceFpsSent=%.2f"
+            + " surfaceHintCalls=%d surfaceHintSuppressed=%d",
             requestedOverlayHz == 120f, requestedOverlayHz, refreshNow, modeNow,
             windowRequested, windowHz, windowModeId,
             mode144Requested, requestedWindowModeId, requestedWindowModeHz,
-            activeDisplayModeId);
+            activeDisplayModeId, surfaceHintOff,
+            lastSurfaceFrameRateRequested, lastSurfaceFrameRateSent,
+            surfaceFrameRateHintCount, surfaceFrameRateSuppressedCount);
         latestPerf = sample;
         perfHistory.addLast(sample);
         while (perfHistory.size() > PERF_HISTORY_LIMIT) perfHistory.removeFirst();
@@ -359,6 +374,39 @@ public final class NicoOverlayBridge {
             }
         }
         updateFpsBadge();
+    }
+
+    /**
+     * Called by the patched Media3 VideoFrameReleaseHelper constructor, before
+     * any video frame-rate hints are sent. No TVer SDK classes are referenced.
+     */
+    public static void rememberVideoFrameRateContext(Context context) {
+        if (context != null) videoFrameRateContext = context.getApplicationContext();
+    }
+
+    /**
+     * Called from VideoFrameReleaseHelper.Api30.setSurfaceFrameRate(), immediately
+     * before Android's Surface.setFrameRate(). A zero request clears an existing
+     * frame-rate hint, including the 29.97Hz fixed-source hint seen in dumpsys.
+     * Keeping the upstream helper state unchanged makes the experiment reversible
+     * when the next player session starts (reopen playback after toggling).
+     */
+    public static float filterVideoSurfaceFrameRate(float requestedHz) {
+        Context context = videoFrameRateContext;
+        boolean disabled = context != null && context
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(VIDEO_SURFACE_RATE_OFF, false);
+        float appliedHz = disabled ? 0f : requestedHz;
+        lastSurfaceFrameRateRequested = requestedHz;
+        lastSurfaceFrameRateSent = appliedHz;
+        surfaceFrameRateHintCount++;
+        if (disabled && requestedHz > 0f) {
+            surfaceFrameRateSuppressedCount++;
+            Log.i(TAG, String.format(Locale.ROOT,
+                "Suppressed video Surface.setFrameRate(%.3fHz); requested 0Hz instead",
+                requestedHz));
+        }
+        return appliedHz;
     }
 
     private static void updateRequestedFrameRate(PassThroughWebView web, boolean prefer120) {
@@ -639,6 +687,8 @@ public final class NicoOverlayBridge {
             WINDOW_PREFER_120HZ, false));
         panel.addView(makeSettingSwitch(activity, "動画再生中に144Hz表示モードを優先（実験・電池消費増）",
             WINDOW_MODE_144HZ, false));
+        panel.addView(makeSettingSwitch(activity, "動画Surfaceのフレームレート要求を解除（実験・再生画面を開き直して反映）",
+            VIDEO_SURFACE_RATE_OFF, false));
 
         android.widget.Button copy = new android.widget.Button(activity);
         copy.setText("FPS計測ログを表示・コピー");
