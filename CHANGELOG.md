@@ -1,3 +1,68 @@
+## [1.2.0-dev.10](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.9...v1.2.0-dev.10) (2026-10-23)
+
+### ✨ New Features
+
+* add opt-in window minimum 120Hz refresh-rate experiment ([9ebcdd5](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/9ebcdd577bb27de282bd544199064c794eb3919d))
+
+## [1.2.0-dev.9](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.8...v1.2.0-dev.9) (2026-10-22)
+
+### ✨ New Features
+
+* add opt-in Media3 video Surface frame-rate hint suppression ([2310174](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/2310174cb2e0924a7fd9b30a60c97245e23636d9))
+
+## [1.2.0-dev.8](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.7...v1.2.0-dev.8) (2026-10-22)
+
+### ✨ New Features
+
+* add opt-in 144Hz preferred display mode for TVer playback ([ec5999e](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/ec5999e90eaf7132dd5eada3a6e15e1723f9064d))
+
+## [1.2.0-dev.7](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.6...v1.2.0-dev.7) (2026-10-22)
+
+### ✨ New Features
+
+* add opt-in Window 120Hz preference during Nico playback ([816ee35](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/816ee35144f485a05a32076ef725ca65b4f4e4df))
+
+## [1.2.0-dev.6](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.5...v1.2.0-dev.6) (2026-10-22)
+
+### ✨ New Features
+
+* add opt-in 120fps preference for Nico WebView comments ([e6dfb11](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/e6dfb11fca3570210fe41011cd236d0d2a904405))
+
+## [1.2.0-dev.5](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.4...v1.2.0-dev.5) (2026-10-21)
+
+### ✨ New Features
+
+* integrate Nico FPS controls and saved log copy into Morphe settings ([92c8b48](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/92c8b4813548ce801e8da5699cb50655eeef1f4a))
+
+## [1.2.0-dev.4](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.3...v1.2.0-dev.4) (2026-10-21)
+
+### ✨ New Features
+
+* add in-app Nico overlay FPS badge and copyable diagnostics ([e794e94](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/e794e9415b9a8ec2c6690494a803463ceefb03b8))
+
+## [1.2.0-dev.3](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.2...v1.2.0-dev.3) (2026-10-21)
+
+### ✨ New Features
+
+* log five-second Nico overlay WebView FPS and frame timing ([3cec013](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3cec013dfc0e679e14c87a5c2b1154bf8c2c8855))
+
+## [1.2.0-dev.2](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.1...v1.2.0-dev.2) (2026-10-21)
+
+### 🐛 Bug Fixes
+
+* keep Nico overlay playback clock monotonic between TVer samples ([8c7e64f](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/8c7e64f62480f676adf8fef4af9443c89a3b294b))
+
+## [1.2.0-dev.1](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0...v1.2.0-dev.1) (2026-10-21)
+
+### 🐛 Bug Fixes
+
+* compile experimental overlay extension with Java 17 ([6646c7d](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/6646c7d15ce0a41761a745233887fa0e99d915db))
+* document installing Nico overlay from published prereleases ([39e8cd2](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/39e8cd279bc24697a8f8c1203e5533410f7dd257))
+
+### ✨ New Features
+
+* add experimental offline Nico overlay prototype for TVer 7.2.1 ([3ec95e0](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3ec95e0264da88c16a953112c23ea3d237f253f9))
+
 ## [1.1.0](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.1...v1.1.0) (2026-10-21)
 
 ### 🐛 Bug Fixes
