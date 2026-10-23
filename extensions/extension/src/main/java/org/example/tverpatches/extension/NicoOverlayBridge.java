@@ -35,6 +35,7 @@ import android.widget.Toast;
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Locale;
 
@@ -53,6 +54,7 @@ public final class NicoOverlayBridge {
     private static final String PREFER_120FPS = "nico_prefer_120fps";
     private static final String WINDOW_PREFER_120HZ = "nico_window_prefer_120hz";
     private static final String WINDOW_MODE_144HZ = "nico_window_mode_144hz";
+    private static final String WINDOW_MIN_120HZ = "nico_window_min_120hz";
     private static final String VIDEO_SURFACE_RATE_OFF = "nico_video_surface_framerate_off";
     private static final String SAVED_FPS_REPORT = "nico_fps_last_report";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
@@ -71,6 +73,10 @@ public final class NicoOverlayBridge {
     private static int previousWindowModeId;
     private static int requestedWindowModeId;
     private static float requestedWindowModeHz;
+    private static WeakReference<Activity> minWindowActivityRef = new WeakReference<>(null);
+    private static float previousWindowMinRefreshRate;
+    private static boolean minWindowPreferenceApplied;
+    private static String minWindowPreferenceStatus = "off";
     // Captured directly from Media3's VideoFrameReleaseHelper(Context) constructor.
     // Its Surface.setFrameRate hints may be sent before the overlay View is bound.
     private static volatile Context videoFrameRateContext;
@@ -173,6 +179,7 @@ public final class NicoOverlayBridge {
         stateClass = null;
         position = phase = rate = ad = seeking = generation = null;
         // Keep FPS history across playback -> settings navigation.
+        restoreMinimumDisplayRefreshRatePreference();
         restoreDisplayModePreference();
         restoreWindowPreference();
         requestedOverlayHz = 0f;
@@ -308,6 +315,10 @@ public final class NicoOverlayBridge {
             : activity.getWindow().getAttributes();
         float windowHz = windowAttrs == null ? 0f : windowAttrs.preferredRefreshRate;
         int windowModeId = windowAttrs == null ? 0 : windowAttrs.preferredDisplayModeId;
+        float minimumWindowHz = getMinimumWindowRefreshRate(windowAttrs);
+        boolean minWindowRequested = minWindowPreferenceApplied && activity != null
+            && activity == minWindowActivityRef.get()
+            && Float.compare(minimumWindowHz, 120f) == 0;
         boolean windowRequested = windowPreferenceApplied && activity != null
             && activity == windowActivityRef.get() && windowHz == 120f;
         boolean mode144Requested = activity != null && activity == modeActivityRef.get()
@@ -321,12 +332,16 @@ public final class NicoOverlayBridge {
             " request120=%s requestedHz=%.1f displayHzNow=%.1f displayModeHz=%.1f"
             + " window120=%s windowPreferredHz=%.1f windowModeId=%d"
             + " mode144=%s requestedModeId=%d requestedModeHz=%.1f displayModeIdNow=%d"
+            + " min120=%s min120Applied=%s minWindowHz=%.1f min120Status=%s"
             + " surfaceHintOff=%s surfaceFpsWanted=%.2f surfaceFpsSent=%.2f"
             + " surfaceHintCalls=%d surfaceHintSuppressed=%d",
             requestedOverlayHz == 120f, requestedOverlayHz, refreshNow, modeNow,
             windowRequested, windowHz, windowModeId,
             mode144Requested, requestedWindowModeId, requestedWindowModeHz,
-            activeDisplayModeId, surfaceHintOff,
+            activeDisplayModeId,
+            host.getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(WINDOW_MIN_120HZ, false), minWindowRequested,
+            minimumWindowHz, minWindowPreferenceStatus, surfaceHintOff,
             lastSurfaceFrameRateRequested, lastSurfaceFrameRateSent,
             surfaceFrameRateHintCount, surfaceFrameRateSuppressedCount);
         latestPerf = sample;
@@ -356,10 +371,12 @@ public final class NicoOverlayBridge {
         if (host == null) return;
         boolean showComments = host.getContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(COMMENTS_VISIBLE, true);
-        // A preferred display mode overrides the window refresh-rate hint.
-        // Keep the two experiments independent for A/B testing.
+        // preferredDisplayModeId overrides preferredMinDisplayRefreshRate.
+        // Give the opt-in minimum-rate experiment priority over the older
+        // 144Hz mode-ID and 120Hz preferredRefreshRate experiments.
         updateDisplayModePreference(host.getContext());
         updateWindowPreference(host.getContext());
+        updateMinimumDisplayRefreshRatePreference(host.getContext());
         if (web != null && web.getParent() == host) {
             // API 35+: per-View refresh preference, not an FPS guarantee.
             // Request the faster display only while comments are enabled.
@@ -435,7 +452,9 @@ public final class NicoOverlayBridge {
      */
     private static void updateDisplayModePreference(Context context) {
         boolean enabled = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(WINDOW_MODE_144HZ, false);
+            .getBoolean(WINDOW_MODE_144HZ, false)
+            && !context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(WINDOW_MIN_120HZ, false);
         Activity activity = findActivity(context);
         if (!enabled || activity == null || activity.isFinishing() || activity.isDestroyed()) {
             restoreDisplayModePreference();
@@ -534,7 +553,9 @@ public final class NicoOverlayBridge {
      */
     private static void updateWindowPreference(Context context) {
         boolean enabled = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(WINDOW_PREFER_120HZ, false);
+            .getBoolean(WINDOW_PREFER_120HZ, false)
+            && !context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(WINDOW_MIN_120HZ, false);
         Activity activity = findActivity(context);
         if (!enabled || activity == null || activity.isFinishing() || activity.isDestroyed()) {
             restoreWindowPreference();
@@ -594,6 +615,104 @@ public final class NicoOverlayBridge {
         windowActivityRef = new WeakReference<>(null);
         previousWindowRefreshRate = 0f;
         windowPreferenceApplied = false;
+    }
+
+    /**
+     * Experimental hidden @TestApi on Android 16. It is ignored by Android
+     * whenever preferredDisplayModeId is nonzero. We access it reflectively
+     * so this extension does not need a non-public Android SDK at compile time.
+     * A vendor hidden-API restriction may reject the call; surface this in
+     * diagnostics rather than claiming the request was honored.
+     */
+    private static Field minimumRefreshRateField() throws NoSuchFieldException {
+        return WindowManager.LayoutParams.class.getField("preferredMinDisplayRefreshRate");
+    }
+
+    private static float getMinimumWindowRefreshRate(WindowManager.LayoutParams attrs) {
+        if (attrs == null) return Float.NaN;
+        try {
+            return minimumRefreshRateField().getFloat(attrs);
+        } catch (ReflectiveOperationException | RuntimeException error) {
+            return Float.NaN;
+        }
+    }
+
+    private static void updateMinimumDisplayRefreshRatePreference(Context context) {
+        boolean enabled = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(WINDOW_MIN_120HZ, false);
+        Activity activity = findActivity(context);
+        if (!enabled || activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            restoreMinimumDisplayRefreshRatePreference();
+            minWindowPreferenceStatus = enabled ? "no-activity" : "off";
+            return;
+        }
+        if (minWindowPreferenceApplied && minWindowActivityRef.get() != activity) {
+            restoreMinimumDisplayRefreshRatePreference();
+        }
+        try {
+            Window window = activity.getWindow();
+            if (window == null) {
+                minWindowPreferenceStatus = "no-window";
+                return;
+            }
+            WindowManager.LayoutParams attrs = window.getAttributes();
+            // Never clear a mode ID belonging to TVer or some other patch.
+            // Morphe's own 144Hz mode is restored by updateDisplayModePreference()
+            // before reaching this method, even if both switches are ON.
+            if (attrs.preferredDisplayModeId != 0) {
+                minWindowPreferenceStatus = "blocked-by-mode-id";
+                return;
+            }
+            Field field = minimumRefreshRateField();
+            float current = field.getFloat(attrs);
+            if (minWindowPreferenceApplied && Float.compare(current, 120f) != 0) {
+                // TVer changed the field; do not clobber a newer setting.
+                minWindowPreferenceApplied = false;
+                minWindowActivityRef = new WeakReference<>(null);
+                minWindowPreferenceStatus = "overridden";
+                return;
+            }
+            if (!minWindowPreferenceApplied) {
+                previousWindowMinRefreshRate = current;
+                minWindowActivityRef = new WeakReference<>(activity);
+                minWindowPreferenceApplied = true;
+            }
+            if (Float.compare(current, 120f) != 0) {
+                field.setFloat(attrs, 120f);
+                window.setAttributes(attrs);
+                Log.i(TAG, String.format(Locale.ROOT,
+                    "Experimental Window preferredMinDisplayRefreshRate=120Hz previous=%.1f",
+                    previousWindowMinRefreshRate));
+            }
+            minWindowPreferenceStatus = "requested";
+        } catch (ReflectiveOperationException | RuntimeException error) {
+            minWindowPreferenceStatus = "unavailable";
+            Log.w(TAG, "Window minimum 120Hz @TestApi unavailable on this Android build", error);
+        }
+    }
+
+    private static void restoreMinimumDisplayRefreshRatePreference() {
+        Activity activity = minWindowActivityRef.get();
+        if (minWindowPreferenceApplied && activity != null) {
+            try {
+                Window window = activity.getWindow();
+                if (window != null) {
+                    WindowManager.LayoutParams attrs = window.getAttributes();
+                    Field field = minimumRefreshRateField();
+                    if (Float.compare(field.getFloat(attrs), 120f) == 0) {
+                        field.setFloat(attrs, previousWindowMinRefreshRate);
+                        window.setAttributes(attrs);
+                        Log.i(TAG, "Restored original Window minimum refresh rate="
+                            + previousWindowMinRefreshRate);
+                    }
+                }
+            } catch (ReflectiveOperationException | RuntimeException error) {
+                Log.w(TAG, "Could not restore original Window minimum refresh rate", error);
+            }
+        }
+        minWindowActivityRef = new WeakReference<>(null);
+        previousWindowMinRefreshRate = 0f;
+        minWindowPreferenceApplied = false;
     }
 
     private static String perfReport(Context context) {
@@ -687,6 +806,9 @@ public final class NicoOverlayBridge {
             WINDOW_PREFER_120HZ, false));
         panel.addView(makeSettingSwitch(activity, "動画再生中に144Hz表示モードを優先（実験・電池消費増）",
             WINDOW_MODE_144HZ, false));
+        panel.addView(makeSettingSwitch(activity,
+            "動画再生中にWindowの最小120Hzを要求（実験・144Hzモード指定より優先・非公開API）",
+            WINDOW_MIN_120HZ, false));
         panel.addView(makeSettingSwitch(activity, "動画Surfaceのフレームレート要求を解除（実験・再生画面を開き直して反映）",
             VIDEO_SURFACE_RATE_OFF, false));
 
