@@ -1,3 +1,9 @@
+## [1.2.0-dev.10](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.9...v1.2.0-dev.10) (2026-10-23)
+
+### ✨ New Features
+
+* add opt-in window minimum 120Hz refresh-rate experiment ([9ebcdd5](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/9ebcdd577bb27de282bd544199064c794eb3919d))
+
 ## [1.2.0-dev.9](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.8...v1.2.0-dev.9) (2026-10-22)
 
 ### ✨ New Features

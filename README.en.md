@@ -54,7 +54,7 @@ Development takes place on the `dev` branch. CI builds and publishes prerelease 
 ## 🩹 Patches list
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.2.0-dev.9](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.2.0-dev.9)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;4 patches total
+> **[v1.2.0-dev.10](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.2.0-dev.10)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;4 patches total
 <details open>
 <summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;4 patches</summary>
 <br>
