@@ -1,0 +1,287 @@
+package org.example.tverpatches.extension;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.InputType;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+import android.util.Log;
+
+import java.lang.ref.WeakReference;
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+/**
+ * Per-episode comment source manager:
+ * TVer's EpisodePlayerMeta -> TVer broadcast EPG -> candidates -> Jikkyo archive.
+ * All public calls besides rememberMetaFlow() run on the main thread.
+ * No candidate is silently applied unless the match is exact and unique.
+ */
+final class NicoAutoSourceController {
+    static final String AUTO_ENABLED = "nico_epg_auto_search";
+    private static final String PREFS = "morphe.tver.settings";
+    private static final String SOURCE_PREFIX = "nico_episode_source_";
+    private static final String TAG = "MorpheNicoOverlay";
+    private static final Handler MAIN = new Handler(Looper.getMainLooper());
+
+    private static volatile WeakReference<Object> metaRef = new WeakReference<>(null);
+    private static String program = "", episode = "", episodeKey = "";
+    private static String searchStatus = "waiting-title";
+    private static List<TverEpgSearch.Candidate> candidates = new ArrayList<>();
+    private static int searchGeneration;
+    private static String loadedSpec = "";
+    private static boolean bsSearch;
+
+    static void rememberMetaFlow(Object flow) {
+        if (flow != null) metaRef = new WeakReference<>(flow);
+    }
+
+    private static String preferenceKey() {
+        if (episodeKey.isEmpty()) return "";
+        try {
+            byte[] bytes = MessageDigest.getInstance("SHA-256")
+                .digest(episodeKey.getBytes(StandardCharsets.UTF_8));
+            StringBuilder key = new StringBuilder(SOURCE_PREFIX);
+            for (int i = 0; i < 12; i++) key.append(String.format(Locale.ROOT,"%02x",bytes[i] & 0xff));
+            return key.toString();
+        } catch (Exception ex) {
+            return SOURCE_PREFIX + Integer.toHexString(episodeKey.hashCode());
+        }
+    }
+
+    static String sourceForCurrent(Context context) {
+        String key = preferenceKey();
+        return key.isEmpty() ? "" : context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
+            .getString(key,"");
+    }
+
+    static void setManual(Context context, String spec) {
+        String key = preferenceKey();
+        SharedPreferences.Editor edit =
+            context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit();
+        if (spec == null || spec.isEmpty()) {
+            if (!key.isEmpty()) edit.remove(key);
+            loadedSpec = "";
+        } else if (!key.isEmpty()) {
+            edit.putString(key,spec);
+            loadedSpec = spec;
+        }
+        edit.apply();
+    }
+
+    static void resetOnRelease() {
+        searchGeneration++;
+        metaRef = new WeakReference<>(null);
+        episodeKey = "";
+        program = episode = "";
+        loadedSpec = "";
+        candidates = new ArrayList<>();
+        searchStatus = "waiting-title";
+    }
+
+    /** Called every 200ms by NicoOverlayBridge while playing. */
+    static void tick(Context context) {
+        Object flow = metaRef.get();
+        if (flow == null) return;
+        try {
+            Class<?> stateFlowType = Class.forName(
+                "kotlinx.coroutines.flow.StateFlow", false, flow.getClass().getClassLoader());
+            Object metadata = stateFlowType.getMethod("getValue").invoke(flow);
+            if (metadata == null) return;
+            Method getProgram = metadata.getClass().getMethod("getProgramTitle");
+            Method getEpisode = metadata.getClass().getMethod("getEpisodeTitle");
+            Object a = getProgram.invoke(metadata), b = getEpisode.invoke(metadata);
+            String currentProgram = a == null ? "" : a.toString().trim();
+            String currentEpisode = b == null ? "" : b.toString().trim();
+            if (currentProgram.isEmpty() || currentEpisode.isEmpty()) return;
+            String key = currentProgram + "\u0000" + currentEpisode;
+            if (key.equals(episodeKey)) return;
+            // New title: never keep the previous episode's comments.
+            searchGeneration++;
+            program = currentProgram;
+            episode = currentEpisode;
+            episodeKey = key;
+            bsSearch = false;
+            candidates = new ArrayList<>();
+            loadedSpec = "";
+            searchStatus = "identified";
+            NicoOverlayBridge.clearEpisodeComments();
+            Log.i(TAG,"TVer episode identified: "+program+" / "+episode);
+            String saved = sourceForCurrent(context);
+            if (!saved.isEmpty()) {
+                loadedSpec = saved;
+                searchStatus = "saved-source";
+                NicoOverlayBridge.openEpisodeCommentSource(context,saved,false);
+            } else if (context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
+                .getBoolean(AUTO_ENABLED,true)) {
+                search(context,false);
+            } else {
+                searchStatus = "disabled";
+            }
+        } catch (ReflectiveOperationException | RuntimeException error) {
+            // This is experimental metadata extraction; never break playback.
+            if (!"metadata-error".equals(searchStatus)) {
+                searchStatus = "metadata-error";
+                Log.w(TAG,"Could not read TVer EpisodePlayerMeta",error);
+            }
+        }
+    }
+
+    static void search(Context context, boolean bs) {
+        if (program.isEmpty() || episode.isEmpty()) {
+            searchStatus = "waiting-title";
+            Toast.makeText(context,"動画を開いて番組名を取得してください",
+                Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final String originalKey = episodeKey;
+        final String series = program, subtitle = episode;
+        final int generation = ++searchGeneration;
+        bsSearch = bs;
+        searchStatus = "searching";
+        candidates = new ArrayList<>();
+        new Thread(() -> {
+            try {
+                TverEpgSearch.Result results = TverEpgSearch.search(series,subtitle,bs);
+                MAIN.post(() -> {
+                    if (generation != searchGeneration || !originalKey.equals(episodeKey))
+                        return;
+                    candidates = results.candidates;
+                    searchStatus = results.successfulDays == 0 ? "epg-error" :
+                        candidates.isEmpty() ? "no-candidates" : "candidates";
+                    // Never overwrite a manual or previously saved selection.
+                    TverEpgSearch.Candidate unique = TverEpgSearch.confident(candidates);
+                    if (unique != null && loadedSpec.isEmpty()
+                        && context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
+                            .getBoolean(AUTO_ENABLED,true)) {
+                        select(context,unique);
+                        searchStatus = "auto-selected";
+                    }
+                });
+            } catch (Exception error) {
+                MAIN.post(() -> {
+                    if (generation != searchGeneration || !originalKey.equals(episodeKey))
+                        return;
+                    searchStatus = "epg-error";
+                    Log.w(TAG,"EPG auto search failed",error);
+                });
+            }
+        },"Morphe-EPG").start();
+    }
+
+    private static void select(Context context, TverEpgSearch.Candidate chosen) {
+        String spec = chosen.specification(0);
+        setManual(context,spec);
+        NicoOverlayBridge.openEpisodeCommentSource(context,spec,true);
+        searchStatus = "selected";
+    }
+
+    static String badgeLabel(int loadedCount) {
+        if (program.isEmpty()) return "💬 コメント";
+        if ("searching".equals(searchStatus)) return "💬 検索中";
+        if (loadedCount > 0) return "💬 "+loadedCount+"件";
+        if (!candidates.isEmpty()) return "💬 候補"+candidates.size();
+        if ("epg-error".equals(searchStatus)) return "💬 検索失敗";
+        if ("no-candidates".equals(searchStatus)) return "💬 候補なし";
+        return "💬 コメント";
+    }
+
+    static String status() { return searchStatus; }
+    static int candidateCount() { return candidates.size(); }
+    static String seriesName() { return program; }
+    static String episodeName() { return episode; }
+
+    static void showPicker(Activity activity) {
+        if (activity == null || activity.isDestroyed() || activity.isFinishing()) return;
+        if (program.isEmpty()) {
+            new AlertDialog.Builder(activity).setTitle("コメントを選択")
+                .setMessage("番組情報を取得中です。動画を開いてから再度お試しください。")
+                .setPositiveButton("閉じる",null).show();
+            return;
+        }
+        final String keyAtOpen = episodeKey;
+        String current = sourceForCurrent(activity);
+        List<TverEpgSearch.Candidate> options = new ArrayList<>(candidates);
+        String[] labels = new String[options.size() + 1];
+        labels[0] = "現在のコメントを調整 / 解除";
+        for (int i=0;i<options.size();i++) labels[i+1]=options.get(i).label();
+        String heading = program+"\n"+episode+"\n"
+            +"検索: "+searchStatus+(bsSearch?" (BS)":" (地デジ)")+"\n"
+            +(current.isEmpty()?"コメント未選択":"選択中: "+current);
+        new AlertDialog.Builder(activity)
+            .setTitle("実況コメントを選択")
+            .setMessage(heading)
+            .setItems(labels,(dialog,which)->{
+                if (!keyAtOpen.equals(episodeKey)) return;
+                if (which==0) showSourceControls(activity);
+                else select(activity,options.get(which-1));
+            })
+            .setPositiveButton("地デジ検索",(d,w)->search(activity,false))
+            .setNeutralButton("BS検索",(d,w)->search(activity,true))
+            .setNegativeButton("閉じる",null)
+            .show();
+    }
+
+    private static void showSourceControls(Activity activity) {
+        String current = sourceForCurrent(activity);
+        if (current.isEmpty()) {
+            new AlertDialog.Builder(activity).setTitle("コメント未選択")
+                .setMessage("候補を選んでから、時刻のずれを補正できます。")
+                .setPositiveButton("閉じる",null).show();
+            return;
+        }
+        String[] parts = current.split("\\|",-1);
+        if (parts.length < 3) return;
+        final String keyAtOpen = episodeKey;
+        int original = 0;
+        if (parts.length>=4) try {original=Integer.parseInt(parts[3]);}
+            catch(NumberFormatException ignored){}
+        final EditText offset = new EditText(activity);
+        offset.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_SIGNED);
+        offset.setSingleLine(true);
+        offset.setText(Integer.toString(original));
+        offset.setSelectAllOnFocus(true);
+        LinearLayout layout = new LinearLayout(activity);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(32,8,32,4);
+        TextView help = new TextView(activity);
+        help.setText("コメントの時刻補正（秒）\n正の値で遅らせ、負の値で早めます。");
+        layout.addView(help);
+        layout.addView(offset);
+        new AlertDialog.Builder(activity)
+            .setTitle("コメントの時刻を調整")
+            .setView(layout)
+            .setPositiveButton("保存して再読込",(d,w)->{
+                if (!keyAtOpen.equals(episodeKey)) return;
+                try {
+                    int seconds = Integer.parseInt(offset.getText().toString().trim());
+                    if (Math.abs(seconds)>3600) throw new NumberFormatException();
+                    String spec = parts[0]+"|"+parts[1]+"|"+parts[2]+"|"+seconds;
+                    setManual(activity,spec);
+                    NicoOverlayBridge.openEpisodeCommentSource(activity,spec,true);
+                } catch(NumberFormatException error) {
+                    Toast.makeText(activity,"補正は±3600秒以内です",
+                        Toast.LENGTH_LONG).show();
+                }
+            })
+            .setNeutralButton("コメントを解除",(d,w)->{
+                if (!keyAtOpen.equals(episodeKey)) return;
+                setManual(activity,"");
+                NicoOverlayBridge.clearEpisodeComments();
+                searchStatus = "cleared";
+            })
+            .setNegativeButton("戻る",null)
+            .show();
+    }
+    private NicoAutoSourceController(){}
+}
