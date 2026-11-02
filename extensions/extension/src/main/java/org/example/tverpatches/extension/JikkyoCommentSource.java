@@ -11,6 +11,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -80,6 +81,13 @@ final class JikkyoCommentSource {
     // MUST run on a background thread. Caller handles lifecycle and delivery.
     static Result fetch(String raw) throws Exception {
         Spec spec = parse(raw);
+        long now = Instant.now().getEpochSecond();
+        if (spec.end > now) {
+            throw new IOException("放送終了前のため過去ログは取得できません");
+        }
+        if (spec.end > now - 10 * 60) {
+            throw new IOException("放送終了直後のため、過去ログの反映まで約10分お待ちください");
+        }
         String address = "https://jikkyo.tsukumijima.net/api/kakolog/"
             + spec.channel + "?starttime=" + spec.start + "&endtime=" + spec.end
             + "&format=json";
@@ -91,7 +99,7 @@ final class JikkyoCommentSource {
         connection.setRequestProperty("Accept", "application/json");
         try {
             int code = connection.getResponseCode();
-            if (code != 200) throw new IOException("HTTP " + code);
+            if (code != 200) throw new IOException("実況APIから HTTP " + code + " が返されました");
             StringBuilder response = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(
                     connection.getInputStream(), StandardCharsets.UTF_8))) {
