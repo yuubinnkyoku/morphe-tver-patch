@@ -31,6 +31,7 @@ final class NicoAutoSourceController {
     static final String AUTO_ENABLED = "nico_epg_auto_search";
     private static final String PREFS = "morphe.tver.settings";
     private static final String SOURCE_PREFIX = "nico_episode_source_";
+    private static final String PENDING_SOURCE = "nico_source_for_next_episode";
     private static final String TAG = "MorpheNicoOverlay";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
 
@@ -71,10 +72,15 @@ final class NicoAutoSourceController {
             context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit();
         if (spec == null || spec.isEmpty()) {
             if (!key.isEmpty()) edit.remove(key);
+            edit.remove(PENDING_SOURCE);
             loadedSpec = "";
         } else if (!key.isEmpty()) {
-            edit.putString(key,spec);
+            edit.putString(key,spec).remove(PENDING_SOURCE);
             loadedSpec = spec;
+        } else {
+            // Morphe settings can be opened without the episode player.
+            // Apply this explicit manual selection ONLY to the next episode.
+            edit.putString(PENDING_SOURCE,spec);
         }
         edit.apply();
     }
@@ -118,6 +124,15 @@ final class NicoAutoSourceController {
             NicoOverlayBridge.clearEpisodeComments();
             Log.i(TAG,"TVer episode identified: "+program+" / "+episode);
             String saved = sourceForCurrent(context);
+            if (saved.isEmpty()) {
+                String pending = context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
+                    .getString(PENDING_SOURCE,"");
+                if (!pending.isEmpty()) {
+                    JikkyoCommentSource.validate(pending);
+                    setManual(context,pending);
+                    saved = pending;
+                }
+            }
             if (!saved.isEmpty()) {
                 loadedSpec = saved;
                 searchStatus = "saved-source";
