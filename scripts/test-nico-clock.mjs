@@ -31,6 +31,11 @@ const sandbox = {
 runInNewContext(script, sandbox, { timeout: 1000 });
 assert.equal(typeof window.MorpheNico.update, "function");
 assert.equal(typeof window.MorpheNico.setVisible, "function");
+assert.equal(typeof window.MorpheNico.beginImport, "function");
+assert.equal(typeof window.MorpheNico.appendComments, "function");
+assert.equal(typeof window.MorpheNico.endImport, "function");
+// Demo is opt-in, not the default source of comments.
+window.MorpheNico.setDemoMode(true);
 
 function draw(text) {
     lines = [];
@@ -91,4 +96,32 @@ assert.equal(draw(marker), null, "comments must be hidden when disabled from set
 window.MorpheNico.setVisible(true);
 assert.ok(draw(marker) !== null, "comments must resume after re-enabling in settings");
 
-console.log("Nico overlay playback clock + visibility regression tests passed");
+
+// Real comment timeline can be delivered incrementally without contacting
+// any external server from the WebView itself.
+window.MorpheNico.setDemoMode(false);
+assert.equal(draw(marker), null, "the opt-in demo should no longer appear");
+window.MorpheNico.beginImport();
+window.MorpheNico.appendComments([
+    { vposMs: 3000, body: "実際のコメント", commands: ["yellow"] },
+]);
+window.MorpheNico.endImport();
+update(3000, true, 1, false, false, 3);
+assert.ok(draw("実際のコメント") !== null, "imported comment should render");
+assert.equal(draw(marker), null, "demo should not mix with actual imported comments");
+
+// Heavy bursts must not visually overlap hundreds of comments in one lane.
+window.MorpheNico.beginImport();
+window.MorpheNico.appendComments(
+    Array.from({ length: 120 }, (_, i) =>
+        ({ vposMs: 3000, body: "同時コメント" + i, commands: [] }))
+);
+window.MorpheNico.endImport();
+update(3000, true, 1, false, false, 4);
+lines = [];
+draw("同時コメント0");
+const crowded = lines.filter(l => l.text.startsWith("同時コメント"));
+assert.ok(crowded.length > 0 && crowded.length <= 14,
+    "rendering should use at most 14 scroll lanes in a burst");
+
+console.log("Nico overlay playback clock, 60fps lanes, and import regression tests passed");
