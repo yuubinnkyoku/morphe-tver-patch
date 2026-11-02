@@ -903,6 +903,7 @@ public final class NicoOverlayBridge {
         <script>
         (function(){
             'use strict';
+
             const cvs=document.getElementById('screen'),ctx=cvs.getContext('2d');
             const W=1920,H=1080,scrollMs=6500,fixedMs=4000;
             const palette={white:'#fff',red:'#f33',pink:'#f8a',orange:'#f90',
@@ -915,14 +916,13 @@ public final class NicoOverlayBridge {
                 {vposMs:9200,body:'特殊コメントは次の段階で対応',commands:['small','green']},
                 {vposMs:12500,body:'改行テスト'+String.fromCharCode(10)+'２行目',commands:['big']}
             ];
-            let threads=null;
+            let comments=[],importBuffer=[],demoPrepared=[],demoMode=false;
             let commentsEnabled=true;
             let clock={ms:0,stamp:performance.now(),playing:false,rate:1,ad:false,seeking:false};
-            let lastReportedMs=null, lastSeekGeneration=null;
+            let lastReportedMs=null,lastSeekGeneration=null;
 
-            // PlaybackState positionMs can update much less often than our 200ms
-            // sampling interval. Re-anchoring to the same stale value causes
-            // comments to bounce right, then jump left at the next real update.
+            // Always follow the video position. Repeated stale StateFlow
+            // samples must not re-anchor the clock every 200ms.
             function interpolatedMs(now){
                 if(!clock.playing||clock.ad||clock.seeking)return clock.ms;
                 return clock.ms+Math.max(0,now-clock.stamp)*clock.rate;
@@ -938,19 +938,13 @@ public final class NicoOverlayBridge {
                 const seekChanged=lastSeekGeneration!==null&&generation!==lastSeekGeneration;
                 const seekEnded=clock.seeking&&!seeking;
                 let next=predicted;
-
                 if(lastReportedMs===null||seekChanged||seekEnded){
-                    // First sample or an explicit discontinuity: snap to TVer.
                     next=ms;
                 }else if(fresh){
                     const drift=ms-predicted;
                     if(ms<lastReportedMs-900||Math.abs(drift)>2400){
-                        // Handle a seek even if the seek flag was not observed.
                         next=ms;
                     }else if(running&&clock.playing){
-                        // Preserve forward motion. Small positive drift is
-                        // corrected gradually; stale/rounded samples never
-                        // push scrolling comments backwards.
                         next=predicted+Math.min(30,Math.max(0,drift)*0.12);
                     }else{
                         next=ms;
@@ -961,43 +955,114 @@ public final class NicoOverlayBridge {
                 clock={ms:next,stamp:now,playing:running,rate:nextRate,ad:!!ad,seeking:!!seeking};
             }
             function setVisible(enabled){commentsEnabled=!!enabled;}
-            function setThreads(input){
-                if(!Array.isArray(input)){threads=null;return;}
+            function setDemoMode(enabled){demoMode=!!enabled;}
+
+            // Precompute text metrics and non-overlapping lanes ONCE per
+            // imported timeline, rather than measureText() on every frame.
+            // Skip unplaceable comments instead of piling them on each other.
+            function prepare(input){
                 const result=[];
-                for(const thread of input)for(const comment of (thread.comments||[])){
-                    if(Number.isFinite(Number(comment.vposMs))){
-                        result.push({vposMs:Number(comment.vposMs),body:String(comment.body||''),
-                            commands:Array.isArray(comment.commands)?comment.commands:[]});
+                for(const c of input){
+                    if(!c||!Number.isFinite(Number(c.vposMs)))continue;
+                    const body=String(c.body??'').slice(0,400);
+                    if(!body)continue;
+                    const commands=Array.isArray(c.commands)?c.commands.map(String):[];
+                    const size=commands.includes('big')?64:commands.includes('small')?30:48;
+                    const lines=body.split(String.fromCharCode(10)).slice(0,10);
+                    ctx.font='bold '+size+'px sans-serif';
+                    const width=Math.max(1,...lines.map(line=>ctx.measureText(line).width));
+                    const height=size*1.16*lines.length;
+                    let color='#fff';
+                    for(const cmd of commands){
+                        if(palette[cmd])color=palette[cmd];
+                        else if(/^#[0-9a-fA-F]{6}$/.test(cmd))color=cmd;
+                    }
+                    result.push({vposMs:Number(c.vposMs),lines,size,width,height,color,
+                        type:commands.includes('ue')?'top':commands.includes('shita')?'bottom':'scroll',
+                        lane:-1,velocity:(W+width)/scrollMs});
+                }
+                result.sort((a,b)=>a.vposMs-b.vposMs);
+                const scrollLanes=Array(14).fill(null);
+                const topUntil=Array(4).fill(-Infinity),bottomUntil=Array(4).fill(-Infinity);
+                for(const c of result){
+                    if(c.type!=='scroll'){
+                        const until=c.type==='top'?topUntil:bottomUntil;
+                        for(let lane=0;lane<until.length;lane++){
+                            if(c.vposMs>=until[lane]){
+                                c.lane=lane;
+                                until[lane]=c.vposMs+fixedMs+80;
+                                break;
+                            }
+                        }
+                        continue;
+                    }
+                    for(let lane=0;lane<scrollLanes.length;lane++){
+                        const previous=scrollLanes[lane];
+                        // Ensure the previous comment has cleared the right
+                        // edge; also prevent a faster, wider newcomer catching
+                        // up before the previous comment leaves on the left.
+                        const earliest=!previous?-Infinity:previous.vposMs+Math.max(
+                            (previous.width+50)/previous.velocity,
+                            scrollMs-(W-50)/c.velocity
+                        );
+                        if(c.vposMs>=earliest){
+                            c.lane=lane;
+                            scrollLanes[lane]=c;
+                            break;
+                        }
                     }
                 }
-                threads=result.sort((a,b)=>a.vposMs-b.vposMs);
+                return result.filter(c=>c.lane>=0);
             }
-            function paint(comment,age,index){
-                const commands=comment.commands||[];
-                const top=commands.includes('ue'),bottom=commands.includes('shita');
-                const duration=top||bottom?fixedMs:scrollMs;
-                if(age<0||age>=duration)return;
-                const size=commands.includes('big')?64:commands.includes('small')?30:48;
-                let color='#fff';
-                for(const cmd of commands){
-                    if(palette[cmd])color=palette[cmd];
-                    else if(/^#[0-9a-fA-F]{6}$/.test(cmd))color=cmd;
+            demoPrepared=prepare(demo);
+            function setThreads(input){
+                const flattened=[];
+                if(Array.isArray(input)){
+                    for(const thread of input){
+                        for(const c of (thread?.comments||[]))flattened.push(c);
+                    }
                 }
+                comments=prepare(flattened);
+                demoMode=false;
+            }
+            function beginImport(){importBuffer=[];comments=[];demoMode=false;}
+            function appendComments(batch){
+                if(Array.isArray(batch)&&importBuffer.length<30000){
+                    for(const c of batch.slice(0,30000-importBuffer.length))importBuffer.push(c);
+                }
+            }
+            function endImport(){
+                comments=prepare(importBuffer);
+                importBuffer=[];
+            }
+            function lowerBound(a,time){
+                let l=0,r=a.length;
+                while(l<r){
+                    const m=(l+r)>>>1;
+                    if(a[m].vposMs<time)l=m+1;
+                    else r=m;
+                }
+                return l;
+            }
+            function paint(comment,age){
+                const duration=comment.type==='scroll'?scrollMs:fixedMs;
+                if(age<0||age>=duration)return false;
+                const {size,lines,width,height,lane,type}=comment;
+                const x=type==='scroll'?W-age*comment.velocity:(W-width)/2;
+                const y=type==='top'?20+lane*190:
+                    type==='bottom'?H-20-height-lane*190:35+lane*72;
                 ctx.font='bold '+size+'px sans-serif';
                 ctx.textBaseline='top';
                 ctx.lineJoin='round';
                 ctx.lineWidth=Math.max(3,size/10);
-                const lines=String(comment.body).split(String.fromCharCode(10));
-                const width=Math.max(1,...lines.map(s=>ctx.measureText(s).width));
-                const height=size*1.16*lines.length;
-                const x=(top||bottom)?(W-width)/2:W-age/duration*(W+width);
-                const y=top?20+index%3*height:bottom?H-20-height-index%3*height:35+index%14*70;
                 ctx.strokeStyle='rgba(0,0,0,.9)';
-                ctx.fillStyle=color;
+                ctx.fillStyle=comment.color;
                 for(let i=0;i<lines.length;i++){
-                    ctx.strokeText(lines[i],x,y+i*size*1.16);
-                    ctx.fillText(lines[i],x,y+i*size*1.16);
+                    const lineY=y+i*size*1.16;
+                    ctx.strokeText(lines[i],x,lineY);
+                    ctx.fillText(lines[i],x,lineY);
                 }
+                return true;
             }
             // JS requestAnimationFrame callback cadence is the measurement.
             // It may differ from the actual physical screen/compositor FPS.
@@ -1049,22 +1114,23 @@ public final class NicoOverlayBridge {
                 drawCostMax=0;
                 drawnSum=0;
             }
+
             function frame(){
                 const frameStart=performance.now();
                 let drawn=0;
                 ctx.clearRect(0,0,W,H);
                 if(commentsEnabled&&!clock.ad&&!clock.seeking){
-                    const ms=clock.ms+(clock.playing?Math.max(0,performance.now()-clock.stamp)*clock.rate:0);
-                    const comments=threads===null?demo:threads;
-                    const timeline=threads===null?ms%16000:ms;
-                    for(let i=0;i<comments.length;i++){
-                        const age=timeline-comments[i].vposMs;
-                        if(age>=0&&age<scrollMs){
-                            paint(comments[i],age,i);
-                            if(++drawn>=150)break;
-                        }
+                    const ms=interpolatedMs(frameStart);
+                    const active=demoMode?demoPrepared:comments;
+                    const timeline=demoMode?ms%16000:ms;
+                    const from=lowerBound(active,timeline-scrollMs);
+                    for(let i=from;i<active.length;i++){
+                        const c=active[i],age=timeline-c.vposMs;
+                        if(age<0)break;
+                        if(paint(c,age))drawn++;
+                        if(drawn>=150)break;
                     }
-                    if(threads===null){
+                    if(demoMode){
                         ctx.font='20px sans-serif';
                         ctx.fillStyle='rgba(255,255,255,.7)';
                         ctx.fillText('Morphe Nico Overlay — TEST MODE',18,H-34);
@@ -1072,6 +1138,10 @@ public final class NicoOverlayBridge {
                 }
                 recordPerf(frameStart,performance.now()-frameStart,drawn);
                 requestAnimationFrame(frame);
+            }
+            window.MorpheNico={update,setThreads,setVisible,setDemoMode,
+                beginImport,appendComments,endImport};
+            requestAnimationFrame(frame);
             }
             window.MorpheNico={update,setThreads,setVisible};
             requestAnimationFrame(frame);
