@@ -896,6 +896,24 @@ public final class NicoOverlayBridge {
         panel.addView(makeSettingSwitch(activity, "動画Surfaceのフレームレート要求を解除（実験・再生画面を開き直して反映）",
             VIDEO_SURFACE_RATE_OFF, false));
 
+        android.widget.Button resetHz = new android.widget.Button(activity);
+        resetHz.setAllCaps(false);
+        resetHz.setText("高Hz実験をすべてOFF（60fps通常運用）");
+        resetHz.setOnClickListener(v -> {
+            activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean(PREFER_120FPS, false)
+                .putBoolean(WINDOW_PREFER_120HZ, false)
+                .putBoolean(WINDOW_MODE_144HZ, false)
+                .putBoolean(WINDOW_MIN_120HZ, false)
+                .putBoolean(VIDEO_SURFACE_RATE_OFF, false)
+                .apply();
+            applyOverlayPreferences();
+            Toast.makeText(activity,
+                "高Hz実験を解除しました。設定画面と再生画面を開き直すと完全に反映されます",
+                Toast.LENGTH_LONG).show();
+        });
+        panel.addView(resetHz);
+
         TextView sourceHeading = new TextView(activity);
         sourceHeading.setText("ニコニコ実況過去ログ（手動指定）");
         sourceHeading.setTextColor(Color.DKGRAY);
