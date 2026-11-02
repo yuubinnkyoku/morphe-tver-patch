@@ -227,21 +227,61 @@ final class NicoAutoSourceController {
         final String keyAtOpen = episodeKey;
         String current = sourceForCurrent(activity);
         List<TverEpgSearch.Candidate> options = new ArrayList<>(candidates);
-        String[] labels = new String[options.size() + 1];
+        String[] labels = new String[options.size() + 2];
         labels[0] = "現在のコメントを調整 / 解除\n"
             + (current.isEmpty() ? "未選択" : current)
             + "　（"+searchStatus+"）";
-        for (int i=0;i<options.size();i++) labels[i+1]=options.get(i).label();
+        labels[1] = "放送局・放送日時を手動で指定";
+        for (int i=0;i<options.size();i++) labels[i+2]=options.get(i).label();
         new AlertDialog.Builder(activity)
             .setTitle("💬 "+program+" / "+episode)
             .setItems(labels,(dialog,which)->{
                 if (!keyAtOpen.equals(episodeKey)) return;
                 if (which==0) showSourceControls(activity);
-                else select(activity,options.get(which-1));
+                else if (which==1) showManualSourceEditor(activity);
+                else select(activity,options.get(which-2));
             })
             .setPositiveButton("地デジ検索",(d,w)->search(activity,false))
             .setNeutralButton("BS検索",(d,w)->search(activity,true))
             .setNegativeButton("閉じる",null)
+            .show();
+    }
+
+
+    private static void showManualSourceEditor(Activity activity) {
+        if (activity.isFinishing() || activity.isDestroyed()) return;
+        String keyAtOpen = episodeKey;
+        EditText input = new EditText(activity);
+        input.setSingleLine(false);
+        input.setTextSize(14);
+        input.setHint("jk7|2026-10-30 23:00|2026-10-30 23:55|0");
+        input.setText(sourceForCurrent(activity));
+        LinearLayout layout = new LinearLayout(activity);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        int pad = Math.round(20 * activity.getResources().getDisplayMetrics().density);
+        layout.setPadding(pad, pad / 2, pad, pad / 2);
+        TextView instructions = new TextView(activity);
+        instructions.setText("実況チャンネル | 元の放送開始 (日本時間) | 終了 | 補正秒\n"
+            + "例: テレビ東京は jk7。放送日が違うとコメントも一致しません。");
+        layout.addView(instructions);
+        layout.addView(input);
+        new AlertDialog.Builder(activity)
+            .setTitle("実況過去ログを手動で指定")
+            .setView(layout)
+            .setPositiveButton("読み込む", (dialog, which) -> {
+                if (!keyAtOpen.equals(episodeKey)) return;
+                String spec = input.getText().toString().trim();
+                try {
+                    JikkyoCommentSource.validate(spec);
+                    setManual(activity, spec);
+                    NicoOverlayBridge.openEpisodeCommentSource(activity, spec, true);
+                    searchStatus = "manual-source";
+                } catch (IllegalArgumentException ex) {
+                    Toast.makeText(activity, "指定形式を確認してください: " + ex.getMessage(),
+                        Toast.LENGTH_LONG).show();
+                }
+            })
+            .setNegativeButton("戻る", null)
             .show();
     }
 
