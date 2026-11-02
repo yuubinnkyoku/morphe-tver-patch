@@ -869,11 +869,20 @@ public final class NicoOverlayBridge {
                     if (generation != commentSourceGeneration || webRef.get() != web) return;
                     commentSourceStatus = "error";
                     commentSourceError = reason;
-                    if (showToast) new AlertDialog.Builder(findActivity(context))
-                        .setTitle("実況過去ログを取得できませんでした")
-                        .setMessage(reason + "\n\n別の放送日時を選ぶか、手動で指定してください。")
-                        .setPositiveButton("OK", null)
-                        .show();
+                    if (showToast) {
+                        Activity activity = findActivity(context);
+                        if (activity != null && !activity.isFinishing()
+                            && !activity.isDestroyed()) {
+                            new AlertDialog.Builder(activity)
+                                .setTitle("実況過去ログを取得できませんでした")
+                                .setMessage(reason
+                                    + "\n\n放送日時を確認してから再度お試しください。")
+                                .setPositiveButton("OK", null)
+                                .show();
+                        } else {
+                            Toast.makeText(context, reason, Toast.LENGTH_LONG).show();
+                        }
+                    }
                 });
             }
         }, "Morphe-Jikkyo").start();
