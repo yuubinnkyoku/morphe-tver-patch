@@ -1,3 +1,17 @@
+## [1.2.0-dev.11](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.10...v1.2.0-dev.11) (2026-11-02)
+
+### 🐛 Bug Fixes
+
+* remove stale demo renderer tail after 60fps rewrite ([f633b42](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/f633b426ed3141c71b317f665ee5f4dcf685ccce))
+* show actual line breaks in Jikkyo source instructions ([2cd9b0f](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/2cd9b0f3fb33d4f8735b79e43c166948af349c84))
+
+### ✨ New Features
+
+* import Jikkyo comments from Morphe settings and render without demo loop ([a3543de](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/a3543de3a4ad645bc40dfce65b2a30a4d8fc7be2))
+* native opt-in Nico Jikkyo archive reader with bounded batches ([a579934](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/a57993438466712b51e678b2f8bb3ece2d06ef18))
+* one-tap return to ordinary 60fps playback settings ([f8cf243](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/f8cf243dd72d5261433bebde98094323975c4998))
+* render Nico comments with 60fps-friendly lane layout and active-window lookup ([1f79844](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/1f7984403b5d39062c6f935786ee1bec04972d0b))
+
 ## [1.2.0-dev.10](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.9...v1.2.0-dev.10) (2026-10-23)
 
 ### ✨ New Features
