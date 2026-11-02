@@ -99,6 +99,23 @@ val tverNicoCommentOverlayPatch = bytecodePatch(
         release.addInstructions(2,
             "invoke-static {p0}, $bridgeType->unbind(Landroid/view/ViewGroup;)V")
 
+        // Extract the native TVer series/episode metadata for automatic
+        // broadcast-EPG matching. The getter is just an iget-object and a
+        // return-object on TVer 7.2.1. Capture the StateFlow once, then read
+        // updates in the Java extension while the episode player is bound.
+        val vmType = "Ljp/hamitv/hamiand1/feature/episode/ui/screen/EpisodeViewModel;"
+        val viewModel = mutableClassDefBy(classDefBy(vmType))
+        val episodeMeta = viewModel.methods.single {
+            it.name == "getEpisodeMeta" && it.parameterTypes.isEmpty() &&
+                it.returnType.toString() == "Lkotlinx/coroutines/flow/StateFlow;"
+        }
+        check(episodeMeta.implementation?.registerCount == 2 &&
+              episodeMeta.implementation!!.instructions.size == 2) {
+            "Unexpected EpisodeViewModel.getEpisodeMeta; refusing to inject"
+        }
+        episodeMeta.addInstructions(1,
+            "invoke-static {v0}, $bridgeType->rememberEpisodeMetaFlow(Ljava/lang/Object;)V")
+
         // Enhance the existing settings LinearLayout (v7) before the original
         // AlertDialog.Builder.setView() call. This patch runs after PiP because
         // it depends on that patch's generated morpheShowSettingsDialog method.
