@@ -228,14 +228,12 @@ final class NicoAutoSourceController {
         String current = sourceForCurrent(activity);
         List<TverEpgSearch.Candidate> options = new ArrayList<>(candidates);
         String[] labels = new String[options.size() + 1];
-        labels[0] = "現在のコメントを調整 / 解除";
+        labels[0] = "現在のコメントを調整 / 解除\\n"
+            + (current.isEmpty() ? "未選択" : current)
+            + "　（"+searchStatus+"）";
         for (int i=0;i<options.size();i++) labels[i+1]=options.get(i).label();
-        String heading = program+"\n"+episode+"\n"
-            +"検索: "+searchStatus+(bsSearch?" (BS)":" (地デジ)")+"\n"
-            +(current.isEmpty()?"コメント未選択":"選択中: "+current);
         new AlertDialog.Builder(activity)
-            .setTitle("実況コメントを選択")
-            .setMessage(heading)
+            .setTitle("💬 "+program+" / "+episode)
             .setItems(labels,(dialog,which)->{
                 if (!keyAtOpen.equals(episodeKey)) return;
                 if (which==0) showSourceControls(activity);
