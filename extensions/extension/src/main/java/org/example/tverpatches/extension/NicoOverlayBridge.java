@@ -355,14 +355,18 @@ public final class NicoOverlayBridge {
     private static void bringOverlaysToFront(ViewGroup host) {
         PassThroughWebView web = webRef.get();
         TextView badge = badgeRef.get();
+        TextView sourceBadge = sourceBadgeRef.get();
         boolean hasBadge = badge != null && badge.getParent() == host;
+        boolean hasSource = sourceBadge != null && sourceBadge.getParent() == host;
         if (web != null && web.getParent() == host) {
-            int expected = host.getChildCount() - (hasBadge ? 2 : 1);
+            int expected = host.getChildCount() - 1 - (hasBadge ? 1 : 0)
+                - (hasSource ? 1 : 0);
             if (host.indexOfChild(web) != expected) web.bringToFront();
         }
-        if (hasBadge && host.indexOfChild(badge) != host.getChildCount() - 1) {
-            badge.bringToFront();
-        }
+        if (hasBadge && host.indexOfChild(badge) !=
+                host.getChildCount() - 1 - (hasSource ? 1 : 0)) badge.bringToFront();
+        if (hasSource && host.indexOfChild(sourceBadge) != host.getChildCount() - 1)
+            sourceBadge.bringToFront();
     }
 
     private static String metric(String sample, String key) {
@@ -405,7 +409,7 @@ public final class NicoOverlayBridge {
             + " min120=%s min120Applied=%s minWindowHz=%.1f min120Status=%s"
             + " surfaceHintOff=%s surfaceFpsWanted=%.2f surfaceFpsSent=%.2f"
             + " surfaceHintCalls=%d surfaceHintSuppressed=%d"
-            + " commentSource=%s loadedComments=%d",
+            + " commentSource=%s loadedComments=%d autoSearch=%s epgCandidates=%d",
             requestedOverlayHz == 120f, requestedOverlayHz, refreshNow, modeNow,
             windowRequested, windowHz, windowModeId,
             mode144Requested, requestedWindowModeId, requestedWindowModeHz,
@@ -415,7 +419,8 @@ public final class NicoOverlayBridge {
             minimumWindowHz, minWindowPreferenceStatus, surfaceHintOff,
             lastSurfaceFrameRateRequested, lastSurfaceFrameRateSent,
             surfaceFrameRateHintCount, surfaceFrameRateSuppressedCount,
-            commentSourceStatus, commentSourceCount);
+            commentSourceStatus, commentSourceCount,
+            NicoAutoSourceController.status(), NicoAutoSourceController.candidateCount());
         latestPerf = sample;
         perfHistory.addLast(sample);
         while (perfHistory.size() > PERF_HISTORY_LIMIT) perfHistory.removeFirst();
@@ -938,6 +943,14 @@ public final class NicoOverlayBridge {
             COMMENTS_VISIBLE, true));
         panel.addView(makeSettingSwitch(activity, "デモコメントを表示（通常はOFF）",
             SHOW_DEMO, false));
+        panel.addView(makeSettingSwitch(activity,
+            "番組情報から実況コメントを自動検索（完全一致時のみ自動読込）",
+            NicoAutoSourceController.AUTO_ENABLED, true));
+        android.widget.Button selectSource = new android.widget.Button(activity);
+        selectSource.setText("現在の番組の実況コメントを探す・選ぶ");
+        selectSource.setAllCaps(false);
+        selectSource.setOnClickListener(v -> NicoAutoSourceController.showPicker(activity));
+        panel.addView(selectSource);
         panel.addView(makeSettingSwitch(activity, "動画上にFPSを表示する",
             FPS_VISIBLE, true));
         panel.addView(makeSettingSwitch(activity, "コメント描画を120fps優先（実験・電池消費増の可能性）",
@@ -971,14 +984,14 @@ public final class NicoOverlayBridge {
         panel.addView(resetHz);
 
         TextView sourceHeading = new TextView(activity);
-        sourceHeading.setText("ニコニコ実況過去ログ（手動指定）");
+        sourceHeading.setText("ニコニコ実況過去ログ（手動指定・自動検索できない場合）");
         sourceHeading.setTextColor(Color.DKGRAY);
         sourceHeading.setPadding(dp(panel, 24), dp(panel, 14), dp(panel, 24), dp(panel, 4));
         panel.addView(sourceHeading);
         TextView sourceHelp = new TextView(activity);
         sourceHelp.setText("チャンネル | 開始日時(JST) | 終了日時(JST) | ずれ補正(秒)\n"
             + "例: jk1|2026-10-23 21:00|2026-10-23 22:00|0\n"
-            + "番組名との自動照合は未対応です。");
+            + "自動検索に候補がなければ、こちらから指定できます。");
         sourceHelp.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         sourceHelp.setTextColor(Color.DKGRAY);
         sourceHelp.setPadding(dp(panel, 24), dp(panel, 4), dp(panel, 24), dp(panel, 8));
@@ -987,8 +1000,10 @@ public final class NicoOverlayBridge {
         sourceField.setSingleLine(false);
         sourceField.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         sourceField.setHint("jk1|2026-10-23 21:00|2026-10-23 22:00|0");
-        sourceField.setText(activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(JIKKYO_SOURCE, ""));
+        String episodeSpecific = NicoAutoSourceController.sourceForCurrent(activity);
+        sourceField.setText(episodeSpecific.isEmpty()
+            ? activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(JIKKYO_SOURCE, "") : episodeSpecific);
         panel.addView(sourceField);
         android.widget.Button sourceLoad = new android.widget.Button(activity);
         sourceLoad.setAllCaps(false);
@@ -996,15 +1011,12 @@ public final class NicoOverlayBridge {
         sourceLoad.setOnClickListener(v -> {
             String spec = sourceField.getText().toString().trim();
             if (spec.isEmpty()) {
-                commentSourceGeneration++;
                 activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                     .remove(JIKKYO_SOURCE).apply();
-                commentSourceCount = 0;
-                commentSourceStatus = "not-configured";
-                PassThroughWebView current = webRef.get();
-                if (current != null && ready) current.evaluateJavascript(
-                    "window.MorpheNico&&window.MorpheNico.setThreads([]);", null);
-                Toast.makeText(activity, "実況コメントを解除しました", Toast.LENGTH_SHORT).show();
+                NicoAutoSourceController.setManual(activity, "");
+                clearEpisodeComments();
+                Toast.makeText(activity, "現在の番組のコメントを解除しました",
+                    Toast.LENGTH_SHORT).show();
                 return;
             }
             try {
@@ -1016,6 +1028,7 @@ public final class NicoOverlayBridge {
             }
             activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putString(JIKKYO_SOURCE, spec).putBoolean(SHOW_DEMO, false).apply();
+            NicoAutoSourceController.setManual(activity, spec);
             applyOverlayPreferences();
             loadJikkyoSource(activity, spec, true);
         });
