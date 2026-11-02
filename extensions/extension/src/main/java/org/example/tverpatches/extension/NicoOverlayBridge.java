@@ -1142,9 +1142,6 @@ public final class NicoOverlayBridge {
             window.MorpheNico={update,setThreads,setVisible,setDemoMode,
                 beginImport,appendComments,endImport};
             requestAnimationFrame(frame);
-            }
-            window.MorpheNico={update,setThreads,setVisible};
-            requestAnimationFrame(frame);
         })();
         </script></body></html>
         """;
