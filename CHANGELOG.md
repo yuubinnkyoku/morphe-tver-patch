@@ -1,3 +1,15 @@
+## [1.2.0-dev.13](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.12...v1.2.0-dev.13) (2026-11-02)
+
+### 🐛 Bug Fixes
+
+* preserve manual comment source selected outside playback for next episode ([76ce529](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/76ce529d380b56f0de59150da5c4a22b36b1cd49))
+* render comment source chooser line break correctly ([5f566de](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5f566de5fd3ea00dd5f34b2485946f1f070781e0))
+* show selected source and search state within Android source list ([33e416e](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/33e416ee69c49ab223cdf8d70a446fcc77f8efae))
+
+### 🔧 Improvements
+
+* cache TVer EPG by broadcast day to avoid repeated episode lookups ([459911c](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/459911c4d14eb2900049151aeb733021bcfb4720))
+
 ## [1.2.0-dev.12](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.11...v1.2.0-dev.12) (2026-11-02)
 
 ### ✨ New Features
