@@ -65,6 +65,7 @@ public final class NicoOverlayBridge {
     private static WeakReference<ViewGroup> hostRef = new WeakReference<>(null);
     private static WeakReference<PassThroughWebView> webRef = new WeakReference<>(null);
     private static WeakReference<TextView> badgeRef = new WeakReference<>(null);
+    private static WeakReference<TextView> sourceBadgeRef = new WeakReference<>(null);
     private static final Deque<String> perfHistory = new ArrayDeque<>();
     private static final int PERF_HISTORY_LIMIT = 12;
     private static String latestPerf;
@@ -110,6 +111,12 @@ public final class NicoOverlayBridge {
                 // Keep the WebView below our tappable FPS badge, not above it.
                 bringOverlaysToFront(host);
                 sendClock(web);
+                NicoAutoSourceController.tick(host.getContext());
+                TextView sourceBadge = sourceBadgeRef.get();
+                if (sourceBadge != null) {
+                    String text = NicoAutoSourceController.badgeLabel(commentSourceCount);
+                    if (!text.contentEquals(sourceBadge.getText())) sourceBadge.setText(text);
+                }
             }
             ticking = true;
             MAIN.postDelayed(this, 200);
@@ -117,6 +124,24 @@ public final class NicoOverlayBridge {
     };
 
     private NicoOverlayBridge() {}
+
+    /** Called from the patched EpisodeViewModel.getEpisodeMeta() accessor. */
+    public static void rememberEpisodeMetaFlow(Object metaFlow) {
+        NicoAutoSourceController.rememberMetaFlow(metaFlow);
+    }
+
+    static void openEpisodeCommentSource(Context context, String spec, boolean notify) {
+        loadJikkyoSource(context, spec, notify);
+    }
+
+    static void clearEpisodeComments() {
+        commentSourceGeneration++;
+        commentSourceCount = 0;
+        commentSourceStatus = "not-configured";
+        PassThroughWebView current = webRef.get();
+        if (ready && current != null) current.evaluateJavascript(
+            "window.MorpheNico&&window.MorpheNico.setThreads([]);", null);
+    }
 
     public static void bind(ViewGroup host, Object stateFlow) {
         if (host == null || stateFlow == null) return;
@@ -142,6 +167,13 @@ public final class NicoOverlayBridge {
                 badgeParams.leftMargin = dp(host, 12);
                 badgeParams.topMargin = dp(host, 52);
                 host.addView(badge, badgeParams);
+                TextView sourceBadge = makeSourceBadge(host);
+                sourceBadgeRef = new WeakReference<>(sourceBadge);
+                FrameLayout.LayoutParams sourceParams = new FrameLayout.LayoutParams(
+                    -2, -2, Gravity.TOP | Gravity.END);
+                sourceParams.rightMargin = dp(host, 12);
+                sourceParams.topMargin = dp(host, 52);
+                host.addView(sourceBadge, sourceParams);
                 bringOverlaysToFront(host);
                 web.loadDataWithBaseURL(
                     "https://appassets.androidplatform.net/", HTML, "text/html", "UTF-8", null
@@ -187,6 +219,7 @@ public final class NicoOverlayBridge {
         position = phase = rate = ad = seeking = generation = null;
         // Invalidate pending network loads and WebView deliveries on episode release.
         commentSourceGeneration++;
+        NicoAutoSourceController.resetOnRelease();
         // Keep FPS history across playback -> settings navigation.
         restoreMinimumDisplayRefreshRatePreference();
         restoreDisplayModePreference();
@@ -200,6 +233,13 @@ public final class NicoOverlayBridge {
             }
         }
         badgeRef = new WeakReference<>(null);
+        TextView sourceBadge = sourceBadgeRef.get();
+        if (sourceBadge != null) {
+            sourceBadge.setOnClickListener(null);
+            if (sourceBadge.getParent() instanceof ViewGroup)
+                ((ViewGroup) sourceBadge.getParent()).removeView(sourceBadge);
+        }
+        sourceBadgeRef = new WeakReference<>(null);
         PassThroughWebView web = webRef.get();
         if (web != null) {
             if (web.getParent() instanceof ViewGroup) {
@@ -258,15 +298,31 @@ public final class NicoOverlayBridge {
                     updateFpsBadge();
                     applyOverlayPreferences();
                     sendClock(web);
-                    String source = web.getContext().getSharedPreferences(PREFS,
-                        Context.MODE_PRIVATE).getString(JIKKYO_SOURCE, "");
-                    if (source != null && !source.trim().isEmpty()) {
-                        loadJikkyoSource(web.getContext(), source, false);
-                    }
+                    NicoAutoSourceController.tick(web.getContext());
                 }
             }
         });
         return web;
+    }
+
+    private static TextView makeSourceBadge(ViewGroup host) {
+        TextView label = new TextView(host.getContext());
+        label.setText("💬 コメント");
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        label.setTextColor(Color.WHITE);
+        label.setGravity(Gravity.CENTER);
+        label.setPadding(dp(host, 10), dp(host, 7), dp(host, 10), dp(host, 7));
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(Color.argb(220, 18, 24, 36));
+        background.setCornerRadius(dp(host, 9));
+        label.setBackground(background);
+        label.setElevation(dp(host, 4));
+        label.setContentDescription("実況コメントの候補と時刻調整を開く");
+        label.setOnClickListener(v -> {
+            Activity activity = findActivity(host.getContext());
+            if (activity != null) NicoAutoSourceController.showPicker(activity);
+        });
+        return label;
     }
 
     // This HUD is a sibling of the WebView, so only its small bounds consume taps.
