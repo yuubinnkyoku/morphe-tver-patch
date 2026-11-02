@@ -100,3 +100,42 @@ Not yet supported: automatic TVer episode-to-channel/time matching, ad-break
 alignment, Niconico video comments, posting comments, and complete comment-art
 compatibility. Runtime playback, API behavior and timing remain to be tested
 on-device. CI compilation alone does not verify those behaviors.
+
+## 2026-11-02: native TVer metadata and NCOverlay-like source discovery
+
+This stage moves beyond manually typing broadcast start/end timestamps.
+
+- The bytecode patch captures EpisodeViewModel.getEpisodeMeta()'s StateFlow.
+  The Android extension reads EpisodePlayerMeta.getProgramTitle() and
+  getEpisodeTitle(), and ties the selected archive to the series + episode key.
+- The 60fps video overlay gains a small upper-right "💬 コメント" control.
+  Press it to view broadcast candidates, select a different source or correct
+  the offset without leaving the player. Settings also includes an explicit
+  automatic-search switch.
+- A background worker queries TVer's published callEPGv2 (Tokyo area 23,
+  terrestrial by default, last nine dates; BS can be searched on demand),
+  maps broadcaster IDs to Nico Jikkyo channels using NCOverlay/nco-utils'
+  documented TVer/Jikkyo mapping, and ranks title + episode matches.
+- A matching source is **automatically applied only if** its broadcast
+  series and episode exactly match and it is the sole candidate. Otherwise
+  the player presents candidate items for manual confirmation. An unavailable
+  EPG or unsupported title leaves comments blank rather than guessing.
+- Once selected, the source is remembered for that episode alone and
+  reloaded when it is opened later. An explicit manual source entered in
+  Morphe settings with no player active is assigned only to the next episode.
+  The archive offset can be edited in whole seconds (±3600 seconds).
+- The ordinary source controls appear before the old high-refresh experiments,
+  which are now behind an expandable section. Source switching must not alter
+  the TVer video's protected Surface or DRM flags.
+
+Implementation files:
+- extensions/extension/src/main/java/org/example/tverpatches/extension/TverEpgSearch.java
+- extensions/extension/src/main/java/org/example/tverpatches/extension/NicoAutoSourceController.java
+- extensions/extension/src/main/java/org/example/tverpatches/extension/NicoOverlayBridge.java
+
+**Limits:** The EPG search covers recent broadcasting only (nine dates);
+it does not implement NCOverlay's full Niconico official/d-anime/szbh/nicolog
+multi-source searching, anime episode matching via Syoboi Calendar,
+comment posting, or niconicomments-compatible comment art. Title extraction,
+TVer EPG API compatibility, match ranking, actual display and timing must be
+validated on the TVer 7.2.1 device; a successful CI build is not a user test.
