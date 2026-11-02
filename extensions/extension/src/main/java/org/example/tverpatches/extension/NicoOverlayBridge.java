@@ -90,6 +90,7 @@ public final class NicoOverlayBridge {
     private static volatile long surfaceFrameRateHintCount;
     private static volatile long surfaceFrameRateSuppressedCount;
     private static volatile String commentSourceStatus = "not-configured";
+    private static volatile String commentSourceError = "";
     private static volatile int commentSourceCount;
     private static volatile int commentSourceGeneration;
     private static Object flow;
@@ -138,6 +139,7 @@ public final class NicoOverlayBridge {
         commentSourceGeneration++;
         commentSourceCount = 0;
         commentSourceStatus = "not-configured";
+        commentSourceError = "";
         PassThroughWebView current = webRef.get();
         if (ready && current != null) current.evaluateJavascript(
             "window.MorpheNico&&window.MorpheNico.setThreads([]);", null);
@@ -845,6 +847,7 @@ public final class NicoOverlayBridge {
         }
         final int generation = ++commentSourceGeneration;
         commentSourceStatus = "loading";
+        commentSourceError = "";
         commentSourceCount = 0;
         new Thread(() -> {
             try {
@@ -857,13 +860,20 @@ public final class NicoOverlayBridge {
                         result.count, showToast);
                 });
             } catch (Exception error) {
-                Log.w(TAG, "Jikkyo archive fetch failed", error);
+                Log.w(TAG, "Jikkyo archive fetch failed for " + spec, error);
+                String message = error.getMessage();
+                final String reason = message == null || message.trim().isEmpty()
+                    ? error.getClass().getSimpleName()
+                    : message.length() > 150 ? message.substring(0, 150) : message;
                 MAIN.post(() -> {
                     if (generation != commentSourceGeneration || webRef.get() != web) return;
                     commentSourceStatus = "error";
-                    if (showToast) Toast.makeText(context,
-                        "実況コメントの取得に失敗しました（ログを確認）",
-                        Toast.LENGTH_LONG).show();
+                    commentSourceError = reason;
+                    if (showToast) new AlertDialog.Builder(findActivity(context))
+                        .setTitle("実況過去ログを取得できませんでした")
+                        .setMessage(reason + "\n\n別の放送日時を選ぶか、手動で指定してください。")
+                        .setPositiveButton("OK", null)
+                        .show();
                 });
             }
         }, "Morphe-Jikkyo").start();
@@ -884,6 +894,7 @@ public final class NicoOverlayBridge {
         }
         web.evaluateJavascript("window.MorpheNico&&window.MorpheNico.endImport();", null);
         commentSourceCount = count;
+        commentSourceError = "";
         commentSourceStatus = count == 0 ? "empty" : "loaded";
         Log.i(TAG, "Loaded Jikkyo comments=" + count);
         if (showToast) Toast.makeText(web.getContext(),
@@ -903,7 +914,12 @@ public final class NicoOverlayBridge {
         report.append("Display reported refresh: ")
             .append(String.format(Locale.ROOT, "%.1f Hz", displayHz)).append("\n");
         report.append("Measurement: WebView requestAnimationFrame cadence, not physical presented FPS.\n");
-        report.append("Windows: five seconds each; oldest first; maximum 12.\n\n");
+        report.append("Windows: five seconds each; oldest first; maximum 12.\n");
+        if (!commentSourceError.isEmpty()) {
+            report.append("Last comment source error: ")
+                .append(commentSourceError).append("\n");
+        }
+        report.append("\n");
         if (perfHistory.isEmpty()) {
             report.append("Collecting first five seconds of frame data...");
         } else {
