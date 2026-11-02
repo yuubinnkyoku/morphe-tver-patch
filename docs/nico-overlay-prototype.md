@@ -62,3 +62,41 @@ A commit on the dev branch alone is not sufficient for Morphe Manager. The relea
 In Morphe Manager, enable prerelease patch sources, update `yuubinnkyoku/morphe-tver-patch`, and choose the experimental comment overlay patch manually. The patch starts disabled by default.
 
 A successful Gradle `buildAndroid` job only confirms compilation. APK patching and on-device WebView composition still require testing.
+
+## 2026-11-02: 60fps baseline and actual Nico Jikkyo archive support
+
+The 60fps renderer now precomputes text size and allocates non-overlapping
+scrolling and fixed-comment lanes when comments are imported. Each animation
+frame uses binary search to draw only comments in the active time window.
+This is a practical Nico-style overlay, not yet a full niconicomments or
+Flash comment-art renderer.
+
+The six looping demonstration comments are **OFF by default**. For real TV
+broadcast comments, open TVer's Morphe settings and enter a source in
+"ニコニコ実況過去ログ（手動指定）". Example:
+
+    jk1|2026-10-23 21:00|2026-10-23 22:00|0
+
+Fields: channel ID, original broadcast start (JST), broadcast end (JST), and
+optional offset in seconds (positive means delay). You must choose the original
+broadcast channel/time for the TVer episode, not the time you watch the stream.
+Tap "実況コメントを読み込む（空欄で解除）", and reopen playback if needed.
+The source persists across episodes until cleared. The FPS diagnostics report
+commentSource=loaded / empty / error and loadedComments=number.
+To test without an archive source, explicitly enable "デモコメントを表示".
+
+For clean 60fps operation, use "高Hz実験をすべてOFF（60fps通常運用）" and reopen
+the episode. This resets the prior WebView, Window, and video Surface experiments.
+
+Native Java loads the public archive JSON from jikkyo.tsukumijima.net, converts
+date + date_usec to playback-relative milliseconds and forwards only comment
+text/timing/commands to the locally bundled, network-blocked WebView.
+No user IDs, cookies or authentication data are forwarded. Requests are
+bounded (6-hour range, 8 million response characters, 30,000 comments),
+processed off the main thread and delivered to JS in batches. Public archive
+coverage and service availability are outside this patch's control.
+
+Not yet supported: automatic TVer episode-to-channel/time matching, ad-break
+alignment, Niconico video comments, posting comments, and complete comment-art
+compatibility. Runtime playback, API behavior and timing remain to be tested
+on-device. CI compilation alone does not verify those behaviors.
