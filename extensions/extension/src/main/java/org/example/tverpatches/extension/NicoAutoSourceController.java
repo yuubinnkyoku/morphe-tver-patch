@@ -228,7 +228,7 @@ final class NicoAutoSourceController {
         String current = sourceForCurrent(activity);
         List<TverEpgSearch.Candidate> options = new ArrayList<>(candidates);
         String[] labels = new String[options.size() + 1];
-        labels[0] = "現在のコメントを調整 / 解除\\n"
+        labels[0] = "現在のコメントを調整 / 解除\n"
             + (current.isEmpty() ? "未選択" : current)
             + "　（"+searchStatus+"）";
         for (int i=0;i<options.size();i++) labels[i+1]=options.get(i).label();
