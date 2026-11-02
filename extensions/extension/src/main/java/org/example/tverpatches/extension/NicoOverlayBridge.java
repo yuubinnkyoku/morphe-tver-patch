@@ -902,8 +902,8 @@ public final class NicoOverlayBridge {
         sourceHeading.setPadding(dp(panel, 24), dp(panel, 14), dp(panel, 24), dp(panel, 4));
         panel.addView(sourceHeading);
         TextView sourceHelp = new TextView(activity);
-        sourceHelp.setText("チャンネル | 開始日時(JST) | 終了日時(JST) | ずれ補正(秒)\\n"
-            + "例: jk1|2026-10-23 21:00|2026-10-23 22:00|0\\n"
+        sourceHelp.setText("チャンネル | 開始日時(JST) | 終了日時(JST) | ずれ補正(秒)\n"
+            + "例: jk1|2026-10-23 21:00|2026-10-23 22:00|0\n"
             + "番組名との自動照合は未対応です。");
         sourceHelp.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         sourceHelp.setTextColor(Color.DKGRAY);
