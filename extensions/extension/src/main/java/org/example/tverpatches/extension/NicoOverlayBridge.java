@@ -169,11 +169,23 @@ public final class NicoOverlayBridge {
                 host.addView(badge, badgeParams);
                 TextView sourceBadge = makeSourceBadge(host);
                 sourceBadgeRef = new WeakReference<>(sourceBadge);
+                // The episode player host is embedded inside Compose's
+                // AndroidView. Its parent may intercept touches, so a visible
+                // child badge there is not guaranteed to be tappable.
+                // Add this *small* interactive control above Compose, at the
+                // Activity Window decor level. All other player/overlay
+                // pixels remain touch-transparent to TVer.
+                Activity activity = findActivity(host.getContext());
+                View decor = activity == null ? null : activity.getWindow().getDecorView();
+                ViewGroup sourceParent = decor instanceof FrameLayout ? (ViewGroup) decor : host;
                 FrameLayout.LayoutParams sourceParams = new FrameLayout.LayoutParams(
                     -2, -2, Gravity.TOP | Gravity.END);
                 sourceParams.rightMargin = dp(host, 12);
                 sourceParams.topMargin = dp(host, 52);
-                host.addView(sourceBadge, sourceParams);
+                sourceParent.addView(sourceBadge, sourceParams);
+                Log.i(TAG, "Comment source button attached to "
+                    + (sourceParent == host ? "episode host (fallback)" : "Activity decor")
+                    + ", clickable=" + sourceBadge.isClickable());
                 bringOverlaysToFront(host);
                 web.loadDataWithBaseURL(
                     "https://appassets.androidplatform.net/", HTML, "text/html", "UTF-8", null
@@ -318,9 +330,20 @@ public final class NicoOverlayBridge {
         label.setBackground(background);
         label.setElevation(dp(host, 4));
         label.setContentDescription("実況コメントの候補と時刻調整を開く");
+        // Minimum 48dp touch target, independent from text width and density.
+        label.setMinHeight(dp(host, 48));
+        label.setMinWidth(dp(host, 96));
+        label.setClickable(true);
+        label.setOnTouchListener((v, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN)
+                Log.i(TAG, "Comment source button received ACTION_DOWN");
+            return false; // Let TextView's click handling see DOWN and UP.
+        });
         label.setOnClickListener(v -> {
+            Log.i(TAG, "Comment source button clicked");
             Activity activity = findActivity(host.getContext());
             if (activity != null) NicoAutoSourceController.showPicker(activity);
+            else Log.w(TAG, "Cannot open comment source picker: Activity not found");
         });
         return label;
     }
@@ -367,6 +390,15 @@ public final class NicoOverlayBridge {
                 host.getChildCount() - 1 - (hasSource ? 1 : 0)) badge.bringToFront();
         if (hasSource && host.indexOfChild(sourceBadge) != host.getChildCount() - 1)
             sourceBadge.bringToFront();
+        // The decor button must also stay above later Compose/AndroidView
+        // decorations. Reordering only that button does not affect the
+        // player SurfaceView or the secure video composition.
+        if (sourceBadge != null && sourceBadge.getParent() instanceof ViewGroup
+                && sourceBadge.getParent() != host) {
+            ViewGroup parent = (ViewGroup) sourceBadge.getParent();
+            if (parent.indexOfChild(sourceBadge) != parent.getChildCount() - 1)
+                sourceBadge.bringToFront();
+        }
     }
 
     private static String metric(String sample, String key) {
