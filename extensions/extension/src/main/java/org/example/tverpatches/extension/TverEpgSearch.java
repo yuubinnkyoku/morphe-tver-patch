@@ -9,6 +9,9 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.LocalDate;
+import java.time.Instant;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -100,21 +103,57 @@ final class TverEpgSearch {
             && Math.min(a.length(), b.length()) * 10 >= Math.max(a.length(), b.length()) * 8;
     }
 
+    // A series-wide marathon is not the selected VOD episode: matching only
+    // "孤独のグルメ Season4" would load unrelated comments.
+    private static final Pattern MARATHON = Pattern.compile(
+        "全話|イッキ見|一挙|一気見|総集編|ダイジェスト|傑作選|まとめて放送");
+    private static final Pattern EPISODE_NUMBER = Pattern.compile(
+        "(?:第\\s*([0-9]{1,3})\\s*[話回]|[#＃]\\s*([0-9]{1,3})|([0-9]{1,3})\\s*話)");
+
+    private static int episodeNumber(String input) {
+        Matcher match = EPISODE_NUMBER.matcher(
+            Normalizer.normalize(input, Normalizer.Form.NFKC));
+        if (!match.find()) return -1;
+        for (int i = 1; i <= 3; i++) {
+            if (match.group(i) != null) return Integer.parseInt(match.group(i));
+        }
+        return -1;
+    }
+
+    private static String episodeDescription(String input) {
+        String normalized = Normalizer.normalize(input, Normalizer.Form.NFKC);
+        return normalize(EPISODE_NUMBER.matcher(normalized).replaceFirst(""));
+    }
+
     private static int score(String title, String episode, String epgTitle,
                              String epgEpisode) {
         String a = normalize(title), b = normalize(epgTitle);
         if (!alike(a,b)) return 0;
-        int points = a.equals(b) ? 70 : 52;
+        int base = a.equals(b) ? 70 : 52;
         String e = normalize(episode), f = normalize(epgEpisode);
-        // No episode title: there is not enough evidence for auto-loading.
-        if (e.isEmpty() || f.isEmpty()) return points;
-        if (e.equals(f)) return points + 30;
-        if (alike(e,f)) return points + 15;
-        // Generic episode title '第2話' may appear inside the EPG title.
-        if (e.matches("第?[0-9]{1,3}(話|回|期|章).*")
-            && f.contains(e)) return points + 15;
-        // Mismatched nonempty episode titles: do not auto-select.
-        return points - 10;
+        // Without episode-level evidence we cannot assert this archive belongs
+        // to the particular TVer episode. Do not offer a misleading candidate.
+        if (e.isEmpty() || f.isEmpty()) return 0;
+        if (MARATHON.matcher(epgEpisode).find()) return 0;
+        int expectedNumber = episodeNumber(episode);
+        int broadcastNumber = episodeNumber(epgEpisode);
+        if (expectedNumber >= 0 && broadcastNumber >= 0
+            && expectedNumber != broadcastNumber) return 0;
+        if (e.equals(f)) return base + 30;
+        if (alike(e,f)) return base + 25;
+
+        String description = episodeDescription(episode);
+        // Textual episode subtitle agreement is stronger than episode number.
+        if (description.length() >= 8 && f.contains(description))
+            return base + 25;
+
+        // Number-only EPG labels ("第2話" or "#2") are acceptable candidates,
+        // but NOT confident enough to be silently auto-selected.
+        String broadcasterDescription = episodeDescription(epgEpisode);
+        if (expectedNumber >= 0 && broadcastNumber == expectedNumber
+            && broadcasterDescription.length() <= 2) return base + 10;
+        // Do not treat a series name or unrelated episode description as a hit.
+        return 0;
     }
 
     /**
@@ -126,6 +165,7 @@ final class TverEpgSearch {
         if (normalize(title).length() < 3) return new Result(Collections.emptyList(),0);
         ZoneId zone = ZoneId.of("Asia/Tokyo");
         LocalDate today = LocalDate.now(zone);
+        long archiveCutoff = Instant.now().getEpochSecond() - 10 * 60;
         List<Candidate> found = new ArrayList<>();
         int success = 0;
         for (int daysBack = 0; daysBack <= 8; daysBack++) {
@@ -155,7 +195,10 @@ final class TverEpgSearch {
                     int rank = score(title, episode, show, caption);
                     if (rank < 52) continue;
                     long start = program.optLong("startAt", 0),end = program.optLong("endAt",0);
-                    if (start <= 0 || end <= start || end-start > 21600) continue;
+                    // The archive is historical and updated periodically.
+                    // Never show a future/ongoing broadcast as a past log.
+                    if (start <= 0 || end <= start || end-start > 21600
+                        || end > archiveCutoff) continue;
                     found.add(new Candidate(show, caption, broadcasterName, channel,
                         start, end, rank));
                 }
