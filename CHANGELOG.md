@@ -1,3 +1,9 @@
+## [1.2.0-dev.14](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.13...v1.2.0-dev.14) (2026-11-02)
+
+### 🐛 Bug Fixes
+
+* attach Nico comment source picker to Activity decor for reliable touch dispatch ([6a66388](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/6a66388047b031a98a87874f11e147a4011efb46))
+
 ## [1.2.0-dev.13](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.12...v1.2.0-dev.13) (2026-11-02)
 
 ### 🐛 Bug Fixes
