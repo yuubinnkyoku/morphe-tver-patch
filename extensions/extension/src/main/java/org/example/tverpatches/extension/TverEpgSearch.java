@@ -67,6 +67,8 @@ final class TverEpgSearch {
     }
 
     private static final Map<String,String> CHANNELS = new HashMap<>();
+    private static final Map<String,JSONObject> CACHE = new HashMap<>();
+    private static final Map<String,Long> CACHE_UNTIL = new HashMap<>();
     static {
         // TVer channel identifiers matched to Nico Jikkyo by nco-utils.
         String[][] pairs = {
@@ -185,6 +187,11 @@ final class TverEpgSearch {
     }
 
     private static JSONObject fetchEpg(String date, String type) {
+        String cacheKey = date + "|" + type;
+        synchronized (CACHE) {
+            if (CACHE_UNTIL.getOrDefault(cacheKey,0L) > System.currentTimeMillis())
+                return CACHE.get(cacheKey);
+        }
         HttpURLConnection c = null;
         try {
             String url = "https://service-api.tver.jp/api/v1/callEPGv2?date="
@@ -206,7 +213,18 @@ final class TverEpgSearch {
                     body.append(chunk,0,n);
                 }
             }
-            return new JSONObject(body.toString()).optJSONObject("result");
+            JSONObject result = new JSONObject(body.toString()).optJSONObject("result");
+            if (result != null) {
+                synchronized (CACHE) {
+                    if (CACHE.size() > 28) {
+                        CACHE.clear();
+                        CACHE_UNTIL.clear();
+                    }
+                    CACHE.put(cacheKey,result);
+                    CACHE_UNTIL.put(cacheKey,System.currentTimeMillis()+10*60*1000);
+                }
+            }
+            return result;
         } catch (Exception ignored) {
             return null;
         } finally {
