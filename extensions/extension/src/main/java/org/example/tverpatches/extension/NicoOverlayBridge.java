@@ -953,16 +953,32 @@ public final class NicoOverlayBridge {
         panel.addView(selectSource);
         panel.addView(makeSettingSwitch(activity, "動画上にFPSを表示する",
             FPS_VISIBLE, true));
-        panel.addView(makeSettingSwitch(activity, "コメント描画を120fps優先（実験・電池消費増の可能性）",
+        // Keep the normal comment controls visible; hide unsuccessful
+        // high-refresh-rate experiments in an optional technical section.
+        android.widget.Button showExperiments = new android.widget.Button(activity);
+        showExperiments.setText("高Hz実験の詳細を表示");
+        showExperiments.setAllCaps(false);
+        panel.addView(showExperiments);
+        LinearLayout experiments = new LinearLayout(activity);
+        experiments.setOrientation(LinearLayout.VERTICAL);
+        experiments.setVisibility(View.GONE);
+        panel.addView(experiments);
+        showExperiments.setOnClickListener(v -> {
+            boolean expand = experiments.getVisibility() == View.GONE;
+            experiments.setVisibility(expand ? View.VISIBLE : View.GONE);
+            showExperiments.setText(expand
+                ? "高Hz実験の詳細を閉じる" : "高Hz実験の詳細を表示");
+        });
+        experiments.addView(makeSettingSwitch(activity, "コメント描画を120fps優先（実験・電池消費増の可能性）",
             PREFER_120FPS, false));
-        panel.addView(makeSettingSwitch(activity, "動画再生中はWindow全体に120Hz要求（実験）",
+        experiments.addView(makeSettingSwitch(activity, "動画再生中はWindow全体に120Hz要求（実験）",
             WINDOW_PREFER_120HZ, false));
-        panel.addView(makeSettingSwitch(activity, "動画再生中に144Hz表示モードを優先（実験・電池消費増）",
+        experiments.addView(makeSettingSwitch(activity, "動画再生中に144Hz表示モードを優先（実験・電池消費増）",
             WINDOW_MODE_144HZ, false));
-        panel.addView(makeSettingSwitch(activity,
+        experiments.addView(makeSettingSwitch(activity,
             "動画再生中にWindowの最小120Hzを要求（実験・144Hzモード指定より優先・非公開API）",
             WINDOW_MIN_120HZ, false));
-        panel.addView(makeSettingSwitch(activity, "動画Surfaceのフレームレート要求を解除（実験・再生画面を開き直して反映）",
+        experiments.addView(makeSettingSwitch(activity, "動画Surfaceのフレームレート要求を解除（実験・再生画面を開き直して反映）",
             VIDEO_SURFACE_RATE_OFF, false));
 
         android.widget.Button resetHz = new android.widget.Button(activity);
