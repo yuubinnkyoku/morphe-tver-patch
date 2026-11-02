@@ -25,6 +25,7 @@ import android.webkit.ConsoleMessage;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -35,6 +36,7 @@ import android.widget.Toast;
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.List;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Locale;
@@ -57,6 +59,8 @@ public final class NicoOverlayBridge {
     private static final String WINDOW_MIN_120HZ = "nico_window_min_120hz";
     private static final String VIDEO_SURFACE_RATE_OFF = "nico_video_surface_framerate_off";
     private static final String SAVED_FPS_REPORT = "nico_fps_last_report";
+    private static final String JIKKYO_SOURCE = "nico_jikkyo_source";
+    private static final String SHOW_DEMO = "nico_show_demo";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static WeakReference<ViewGroup> hostRef = new WeakReference<>(null);
     private static WeakReference<PassThroughWebView> webRef = new WeakReference<>(null);
@@ -84,6 +88,9 @@ public final class NicoOverlayBridge {
     private static volatile float lastSurfaceFrameRateSent = Float.NaN;
     private static volatile long surfaceFrameRateHintCount;
     private static volatile long surfaceFrameRateSuppressedCount;
+    private static volatile String commentSourceStatus = "not-configured";
+    private static volatile int commentSourceCount;
+    private static volatile int commentSourceGeneration;
     private static Object flow;
     private static boolean ready;
     private static boolean ticking;
@@ -178,6 +185,8 @@ public final class NicoOverlayBridge {
         getFlowValue = null;
         stateClass = null;
         position = phase = rate = ad = seeking = generation = null;
+        // Invalidate pending network loads and WebView deliveries on episode release.
+        commentSourceGeneration++;
         // Keep FPS history across playback -> settings navigation.
         restoreMinimumDisplayRefreshRatePreference();
         restoreDisplayModePreference();
@@ -249,6 +258,11 @@ public final class NicoOverlayBridge {
                     updateFpsBadge();
                     applyOverlayPreferences();
                     sendClock(web);
+                    String source = web.getContext().getSharedPreferences(PREFS,
+                        Context.MODE_PRIVATE).getString(JIKKYO_SOURCE, "");
+                    if (source != null && !source.trim().isEmpty()) {
+                        loadJikkyoSource(web.getContext(), source, false);
+                    }
                 }
             }
         });
@@ -334,7 +348,8 @@ public final class NicoOverlayBridge {
             + " mode144=%s requestedModeId=%d requestedModeHz=%.1f displayModeIdNow=%d"
             + " min120=%s min120Applied=%s minWindowHz=%.1f min120Status=%s"
             + " surfaceHintOff=%s surfaceFpsWanted=%.2f surfaceFpsSent=%.2f"
-            + " surfaceHintCalls=%d surfaceHintSuppressed=%d",
+            + " surfaceHintCalls=%d surfaceHintSuppressed=%d"
+            + " commentSource=%s loadedComments=%d",
             requestedOverlayHz == 120f, requestedOverlayHz, refreshNow, modeNow,
             windowRequested, windowHz, windowModeId,
             mode144Requested, requestedWindowModeId, requestedWindowModeHz,
@@ -343,7 +358,8 @@ public final class NicoOverlayBridge {
                 .getBoolean(WINDOW_MIN_120HZ, false), minWindowRequested,
             minimumWindowHz, minWindowPreferenceStatus, surfaceHintOff,
             lastSurfaceFrameRateRequested, lastSurfaceFrameRateSent,
-            surfaceFrameRateHintCount, surfaceFrameRateSuppressedCount);
+            surfaceFrameRateHintCount, surfaceFrameRateSuppressedCount,
+            commentSourceStatus, commentSourceCount);
         latestPerf = sample;
         perfHistory.addLast(sample);
         while (perfHistory.size() > PERF_HISTORY_LIMIT) perfHistory.removeFirst();
@@ -378,6 +394,12 @@ public final class NicoOverlayBridge {
         updateWindowPreference(host.getContext());
         updateMinimumDisplayRefreshRatePreference(host.getContext());
         if (web != null && web.getParent() == host) {
+            boolean demoOn = host.getContext()
+                .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(SHOW_DEMO, false);
+            if (ready) web.evaluateJavascript(
+                "window.MorpheNico&&window.MorpheNico.setDemoMode(" + demoOn + ");",
+                null);
             // API 35+: per-View refresh preference, not an FPS guarantee.
             // Request the faster display only while comments are enabled.
             boolean request120 = showComments && host.getContext()
@@ -715,6 +737,66 @@ public final class NicoOverlayBridge {
         minWindowPreferenceApplied = false;
     }
 
+    /**
+     * Read the chosen broadcaster archive off the main thread, then stream
+     * bounded JSON arrays to the local, network-blocked WebView. The generation
+     * guard prevents stale episodes from receiving data after navigation.
+     */
+    private static void loadJikkyoSource(Context context, String spec, boolean showToast) {
+        PassThroughWebView web = webRef.get();
+        if (web == null || !ready) {
+            commentSourceStatus = "open-playback";
+            if (showToast) Toast.makeText(context,
+                "保存しました。動画を開くと読み込みます", Toast.LENGTH_LONG).show();
+            return;
+        }
+        final int generation = ++commentSourceGeneration;
+        commentSourceStatus = "loading";
+        commentSourceCount = 0;
+        new Thread(() -> {
+            try {
+                JikkyoCommentSource.Result result = JikkyoCommentSource.fetch(spec);
+                MAIN.post(() -> {
+                    if (generation != commentSourceGeneration || webRef.get() != web) return;
+                    web.evaluateJavascript(
+                        "window.MorpheNico&&window.MorpheNico.beginImport();", null);
+                    deliverJikkyoBatches(web, result.batches, 0, generation,
+                        result.count, showToast);
+                });
+            } catch (Exception error) {
+                Log.w(TAG, "Jikkyo archive fetch failed", error);
+                MAIN.post(() -> {
+                    if (generation != commentSourceGeneration || webRef.get() != web) return;
+                    commentSourceStatus = "error";
+                    if (showToast) Toast.makeText(context,
+                        "実況コメントの取得に失敗しました（ログを確認）",
+                        Toast.LENGTH_LONG).show();
+                });
+            }
+        }, "Morphe-Jikkyo").start();
+    }
+
+    private static void deliverJikkyoBatches(PassThroughWebView web, List<String> batches,
+                                              int index, int generation, int count,
+                                              boolean showToast) {
+        if (generation != commentSourceGeneration || webRef.get() != web || !ready)
+            return;
+        if (index < batches.size()) {
+            web.evaluateJavascript(
+                "window.MorpheNico&&window.MorpheNico.appendComments("
+                    + batches.get(index) + ");", null);
+            MAIN.postDelayed(() -> deliverJikkyoBatches(web, batches, index + 1,
+                generation, count, showToast), 20);
+            return;
+        }
+        web.evaluateJavascript("window.MorpheNico&&window.MorpheNico.endImport();", null);
+        commentSourceCount = count;
+        commentSourceStatus = count == 0 ? "empty" : "loaded";
+        Log.i(TAG, "Loaded Jikkyo comments=" + count);
+        if (showToast) Toast.makeText(web.getContext(),
+            "実況コメントを" + count + "件読み込みました", Toast.LENGTH_LONG).show();
+    }
+
     private static String perfReport(Context context) {
         if (perfHistory.isEmpty()) {
             String stored = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -798,6 +880,8 @@ public final class NicoOverlayBridge {
 
         panel.addView(makeSettingSwitch(activity, "コメント表示を有効にする",
             COMMENTS_VISIBLE, true));
+        panel.addView(makeSettingSwitch(activity, "デモコメントを表示（通常はOFF）",
+            SHOW_DEMO, false));
         panel.addView(makeSettingSwitch(activity, "動画上にFPSを表示する",
             FPS_VISIBLE, true));
         panel.addView(makeSettingSwitch(activity, "コメント描画を120fps優先（実験・電池消費増の可能性）",
@@ -811,6 +895,57 @@ public final class NicoOverlayBridge {
             WINDOW_MIN_120HZ, false));
         panel.addView(makeSettingSwitch(activity, "動画Surfaceのフレームレート要求を解除（実験・再生画面を開き直して反映）",
             VIDEO_SURFACE_RATE_OFF, false));
+
+        TextView sourceHeading = new TextView(activity);
+        sourceHeading.setText("ニコニコ実況過去ログ（手動指定）");
+        sourceHeading.setTextColor(Color.DKGRAY);
+        sourceHeading.setPadding(dp(panel, 24), dp(panel, 14), dp(panel, 24), dp(panel, 4));
+        panel.addView(sourceHeading);
+        TextView sourceHelp = new TextView(activity);
+        sourceHelp.setText("チャンネル | 開始日時(JST) | 終了日時(JST) | ずれ補正(秒)\\n"
+            + "例: jk1|2026-10-23 21:00|2026-10-23 22:00|0\\n"
+            + "番組名との自動照合は未対応です。");
+        sourceHelp.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        sourceHelp.setTextColor(Color.DKGRAY);
+        sourceHelp.setPadding(dp(panel, 24), dp(panel, 4), dp(panel, 24), dp(panel, 8));
+        panel.addView(sourceHelp);
+        EditText sourceField = new EditText(activity);
+        sourceField.setSingleLine(false);
+        sourceField.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        sourceField.setHint("jk1|2026-10-23 21:00|2026-10-23 22:00|0");
+        sourceField.setText(activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(JIKKYO_SOURCE, ""));
+        panel.addView(sourceField);
+        android.widget.Button sourceLoad = new android.widget.Button(activity);
+        sourceLoad.setAllCaps(false);
+        sourceLoad.setText("実況コメントを読み込む（空欄で解除）");
+        sourceLoad.setOnClickListener(v -> {
+            String spec = sourceField.getText().toString().trim();
+            if (spec.isEmpty()) {
+                commentSourceGeneration++;
+                activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                    .remove(JIKKYO_SOURCE).apply();
+                commentSourceCount = 0;
+                commentSourceStatus = "not-configured";
+                PassThroughWebView current = webRef.get();
+                if (current != null && ready) current.evaluateJavascript(
+                    "window.MorpheNico&&window.MorpheNico.setThreads([]);", null);
+                Toast.makeText(activity, "実況コメントを解除しました", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            try {
+                JikkyoCommentSource.validate(spec);
+            } catch (IllegalArgumentException error) {
+                Toast.makeText(activity, "指定が不正です: " + error.getMessage(),
+                    Toast.LENGTH_LONG).show();
+                return;
+            }
+            activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString(JIKKYO_SOURCE, spec).putBoolean(SHOW_DEMO, false).apply();
+            applyOverlayPreferences();
+            loadJikkyoSource(activity, spec, true);
+        });
+        panel.addView(sourceLoad);
 
         android.widget.Button copy = new android.widget.Button(activity);
         copy.setText("FPS計測ログを表示・コピー");
