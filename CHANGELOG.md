@@ -1,3 +1,9 @@
+## [1.2.0-dev.23](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.22...v1.2.0-dev.23) (2026-11-03)
+
+### 🐛 Bug Fixes
+
+* **tver:** retry Nico watch metadata and browser-compatible nvComment requests ([ddc3a69](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/ddc3a69268c4a2a512151a8dfb27651d8ff0ae26))
+
 ## [1.2.0-dev.22](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.21...v1.2.0-dev.22) (2026-11-03)
 
 ### ✨ New Features
