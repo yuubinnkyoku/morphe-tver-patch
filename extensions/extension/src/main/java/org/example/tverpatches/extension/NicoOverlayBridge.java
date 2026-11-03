@@ -64,6 +64,8 @@ public final class NicoOverlayBridge {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static WeakReference<ViewGroup> hostRef = new WeakReference<>(null);
     private static WeakReference<PassThroughWebView> webRef = new WeakReference<>(null);
+    private static WeakReference<FrameLayout> overlayLayerRef = new WeakReference<>(null);
+    private static Runnable pendingRelease;
     private static WeakReference<TextView> badgeRef = new WeakReference<>(null);
     private static WeakReference<TextView> sourceBadgeRef = new WeakReference<>(null);
     private static final Deque<String> perfHistory = new ArrayDeque<>();
@@ -106,11 +108,15 @@ public final class NicoOverlayBridge {
             ticking = false;
             ViewGroup host = hostRef.get();
             PassThroughWebView web = webRef.get();
-            if (host == null || web == null || web.getParent() != host) return;
+            FrameLayout layer = overlayLayerRef.get();
+            if (host == null || web == null || layer == null || web.getParent() != layer)
+                return;
+            // Compose can put the fullscreen controls *above* the AndroidView.
+            // The comment renderer therefore lives in the Activity's decor
+            // and follows the actual position of the video host.
+            updateOverlayGeometry(host);
+            bringOverlaysToFront(host);
             if (host.isAttachedToWindow()) {
-                // TVer's setSecure() may remove and re-add its SurfaceView.
-                // Keep the WebView below our tappable FPS badge, not above it.
-                bringOverlaysToFront(host);
                 sendClock(web);
                 NicoAutoSourceController.tick(host.getContext());
                 TextView sourceBadge = sourceBadgeRef.get();
@@ -151,24 +157,61 @@ public final class NicoOverlayBridge {
             host.post(() -> bind(host, stateFlow));
             return;
         }
+        if (pendingRelease != null) {
+            MAIN.removeCallbacks(pendingRelease);
+            pendingRelease = null;
+        }
         ViewGroup previous = hostRef.get();
         PassThroughWebView existing = webRef.get();
-        if (host != previous || existing == null || existing.getParent() != host) {
+        FrameLayout currentLayer = overlayLayerRef.get();
+        boolean samePlaybackHandoff = host != previous && previous != null
+            && flow == stateFlow && existing != null && currentLayer != null
+            && existing.getParent() == currentLayer && currentLayer.getParent() != null;
+        if (samePlaybackHandoff) {
+            // The AndroidView host changes during Compose fullscreen handoff.
+            // Keep the same WebView, archive timeline and playback clock.
+            if (currentLayer.getParent() == previous) {
+                previous.removeView(currentLayer);
+                host.addView(currentLayer, new FrameLayout.LayoutParams(-1, -1));
+            }
+            hostRef = new WeakReference<>(host);
+            Log.i(TAG, "Reusing Nico renderer after player-host fullscreen handoff");
+            updateOverlayGeometry(host);
+        } else if (host != previous || existing == null || currentLayer == null
+                || existing.getParent() != currentLayer) {
             if (previous != null) release();
             hostRef = new WeakReference<>(host);
             ready = false;
             loggedError = false;
             try {
+                // A separate decor-level layer prevents Compose's fullscreen
+                // layout/controls from obscuring comments rendered inside the
+                // original EpisodePersistentPlayerHostView.
+                Activity activity = findActivity(host.getContext());
+                View decor = activity == null ? null : activity.getWindow().getDecorView();
+                ViewGroup overlayParent = decor instanceof FrameLayout
+                    ? (ViewGroup) decor : host;
+                FrameLayout layer = new FrameLayout(host.getContext());
+                layer.setBackgroundColor(Color.TRANSPARENT);
+                layer.setClickable(false);
+                layer.setFocusable(false);
+                layer.setClipChildren(true);
+                layer.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                overlayLayerRef = new WeakReference<>(layer);
+                FrameLayout.LayoutParams layerParams = new FrameLayout.LayoutParams(
+                    overlayParent == host ? -1 : 1, overlayParent == host ? -1 : 1,
+                    Gravity.TOP | Gravity.START);
+                overlayParent.addView(layer, layerParams);
                 PassThroughWebView web = makeWeb(host);
                 webRef = new WeakReference<>(web);
-                host.addView(web, new FrameLayout.LayoutParams(-1, -1));
+                layer.addView(web, new FrameLayout.LayoutParams(-1, -1));
                 TextView badge = makeFpsBadge(host);
                 badgeRef = new WeakReference<>(badge);
                 FrameLayout.LayoutParams badgeParams = new FrameLayout.LayoutParams(-2, -2,
                     Gravity.TOP | Gravity.START);
                 badgeParams.leftMargin = dp(host, 12);
                 badgeParams.topMargin = dp(host, 52);
-                host.addView(badge, badgeParams);
+                layer.addView(badge, badgeParams);
                 TextView sourceBadge = makeSourceBadge(host);
                 sourceBadgeRef = new WeakReference<>(sourceBadge);
                 // The episode player host is embedded inside Compose's
@@ -177,8 +220,6 @@ public final class NicoOverlayBridge {
                 // Add this *small* interactive control above Compose, at the
                 // Activity Window decor level. All other player/overlay
                 // pixels remain touch-transparent to TVer.
-                Activity activity = findActivity(host.getContext());
-                View decor = activity == null ? null : activity.getWindow().getDecorView();
                 ViewGroup sourceParent = decor instanceof FrameLayout ? (ViewGroup) decor : host;
                 FrameLayout.LayoutParams sourceParams = new FrameLayout.LayoutParams(
                     -2, -2, Gravity.TOP | Gravity.END);
@@ -188,6 +229,7 @@ public final class NicoOverlayBridge {
                 Log.i(TAG, "Comment source button attached to "
                     + (sourceParent == host ? "episode host (fallback)" : "Activity decor")
                     + ", clickable=" + sourceBadge.isClickable());
+                updateOverlayGeometry(host);
                 bringOverlaysToFront(host);
                 web.loadDataWithBaseURL(
                     "https://appassets.androidplatform.net/", HTML, "text/html", "UTF-8", null
@@ -206,6 +248,7 @@ public final class NicoOverlayBridge {
         // Run AFTER Compose has called host.setSecure() on this update.
         host.post(() -> {
             if (hostRef.get() != host) return;
+            updateOverlayGeometry(host);
             bringOverlaysToFront(host);
         });
         if (!ticking) {
@@ -220,10 +263,24 @@ public final class NicoOverlayBridge {
             host.post(() -> unbind(host));
             return;
         }
-        if (hostRef.get() == host) release();
+        if (hostRef.get() == host) {
+            // Fullscreen handoff may dispose one Compose AndroidView just
+            // before constructing its replacement. Allow it to rebind and
+            // reuse the renderer without dropping already loaded comments.
+            if (pendingRelease != null) MAIN.removeCallbacks(pendingRelease);
+            final Runnable cleanup = () -> {
+                if (hostRef.get() == host) release();
+            };
+            pendingRelease = cleanup;
+            MAIN.postDelayed(cleanup, 700);
+        }
     }
 
     private static void release() {
+        if (pendingRelease != null) {
+            MAIN.removeCallbacks(pendingRelease);
+            pendingRelease = null;
+        }
         MAIN.removeCallbacks(TICK);
         ticking = false;
         ready = false;
@@ -263,6 +320,10 @@ public final class NicoOverlayBridge {
             web.destroy();
         }
         webRef = new WeakReference<>(null);
+        FrameLayout layer = overlayLayerRef.get();
+        if (layer != null && layer.getParent() instanceof ViewGroup)
+            ((ViewGroup) layer.getParent()).removeView(layer);
+        overlayLayerRef = new WeakReference<>(null);
         hostRef = new WeakReference<>(null);
     }
 
@@ -488,7 +549,7 @@ public final class NicoOverlayBridge {
         updateDisplayModePreference(host.getContext());
         updateWindowPreference(host.getContext());
         updateMinimumDisplayRefreshRatePreference(host.getContext());
-        if (web != null && web.getParent() == host) {
+        if (web != null && web.getParent() == overlayLayerRef.get()) {
             boolean demoOn = host.getContext()
                 .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getBoolean(SHOW_DEMO, false);
