@@ -1,3 +1,9 @@
+## [1.2.0-dev.22](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.21...v1.2.0-dev.22) (2026-11-03)
+
+### ✨ New Features
+
+* **tver:** mix public NicoNico video comments with Jikkyo archives ([a6d1cc0](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/a6d1cc0651ff6d18d78690e3c02b6f6e9967eb44))
+
 ## [1.2.0-dev.21](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.20...v1.2.0-dev.21) (2026-11-03)
 
 ### ✨ New Features
