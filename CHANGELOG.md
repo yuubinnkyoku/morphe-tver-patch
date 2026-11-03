@@ -1,3 +1,13 @@
+## [1.2.0-dev.19](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.18...v1.2.0-dev.19) (2026-11-03)
+
+### 🐛 Bug Fixes
+
+* **tver:** import ArrayList for multi-broadcast archive loader ([5cd97e3](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5cd97e337357ae20cd29b150cac67f2ec51f1360))
+
+### ✨ New Features
+
+* **tver:** load all verified Jikkyo reruns for current episode ([6584076](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/65840765f8762e7aed07d9b270bfe1c564b1f35d))
+
 ## [1.2.0-dev.18](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.17...v1.2.0-dev.18) (2026-11-03)
 
 ### ✨ New Features
