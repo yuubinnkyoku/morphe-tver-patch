@@ -110,7 +110,7 @@ final class TverEpgSearch {
     private static final Pattern EPISODE_NUMBER = Pattern.compile(
         "(?:第\\s*([0-9]{1,3})\\s*[話回]|[#＃]\\s*([0-9]{1,3})|([0-9]{1,3})\\s*話)");
 
-    private static int episodeNumber(String input) {
+    static int episodeNumber(String input) {
         Matcher match = EPISODE_NUMBER.matcher(
             Normalizer.normalize(input, Normalizer.Form.NFKC));
         if (!match.find()) return -1;
@@ -223,10 +223,49 @@ final class TverEpgSearch {
         return new Result(unique, success);
     }
 
-    /** Require an unambiguous, exact series + episode match. */
+    /**
+     * Choose a well-identified episode, not merely a similarly named series.
+     * Repeat broadcasts of the very same episode are safe to group together:
+     * prefer the latest completed one so we can select automatically.
+     * Divergent high-confidence episode descriptions remain manual choices.
+     */
     static Candidate confident(List<Candidate> list) {
-        if (list.size() != 1 || list.get(0).score < 100) return null;
-        return list.get(0);
+        if (list.isEmpty()) return null;
+        List<Candidate> ranked = new ArrayList<>(list);
+        ranked.sort(Comparator.<Candidate>comparingInt(c -> c.score).reversed()
+            .thenComparing(Comparator.comparingLong((Candidate c) -> c.start).reversed()));
+        Candidate top = ranked.get(0);
+        if (top.score < 95) return null;
+        for (int i = 1; i < ranked.size(); i++) {
+            Candidate other = ranked.get(i);
+            if (other.score < top.score) break;
+            // Do not silently choose between different episodes or editions
+            // when they score equally well.
+            if (!normalize(top.title).equals(normalize(other.title))
+                || !normalize(top.episode).equals(normalize(other.episode))) return null;
+        }
+        return top;
+    }
+
+    /** Merge different broadcaster schedules without duplicate time slots. */
+    static List<Candidate> merge(List<Candidate> first, List<Candidate> second) {
+        List<Candidate> all = new ArrayList<>(first);
+        all.addAll(second);
+        all.sort(Comparator.<Candidate>comparingInt(c -> c.score).reversed()
+            .thenComparing(Comparator.comparingLong((Candidate c) -> c.start).reversed()));
+        List<Candidate> unique = new ArrayList<>();
+        for (Candidate next : all) {
+            boolean seen = false;
+            for (Candidate prev : unique) {
+                if (prev.channel.equals(next.channel) && prev.start == next.start) {
+                    seen = true;
+                    break;
+                }
+            }
+            if (!seen) unique.add(next);
+            if (unique.size() >= 12) break;
+        }
+        return unique;
     }
 
     private static JSONObject fetchEpg(String date, String type) {

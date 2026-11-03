@@ -167,19 +167,42 @@ final class NicoAutoSourceController {
         candidates = new ArrayList<>();
         new Thread(() -> {
             try {
-                TverEpgSearch.Result results = TverEpgSearch.search(series,subtitle,bs);
+                // The manual BS button still searches BS exclusively. Automatic
+                // searches try terrestrial, then BS, then older broadcast
+                // history from Syoboi Calendar if no safe match was found.
+                TverEpgSearch.Result first = TverEpgSearch.search(series, subtitle, bs);
+                List<TverEpgSearch.Candidate> found =
+                    new ArrayList<>(first.candidates);
+                int successfulSources = first.successfulDays;
+                if (!bs && TverEpgSearch.confident(found) == null) {
+                    TverEpgSearch.Result satellite =
+                        TverEpgSearch.search(series, subtitle, true);
+                    found = TverEpgSearch.merge(found, satellite.candidates);
+                    successfulSources += satellite.successfulDays;
+                }
+                if (!bs && TverEpgSearch.confident(found) == null) {
+                    TverEpgSearch.Result older =
+                        SyobocalSearch.search(series, subtitle);
+                    found = TverEpgSearch.merge(found, older.candidates);
+                    successfulSources += older.successfulDays;
+                }
+                final List<TverEpgSearch.Candidate> resolved = found;
+                final int sources = successfulSources;
                 MAIN.post(() -> {
                     if (generation != searchGeneration || !originalKey.equals(episodeKey))
                         return;
-                    candidates = results.candidates;
-                    searchStatus = results.successfulDays == 0 ? "epg-error" :
+                    candidates = resolved;
+                    searchStatus = sources == 0 ? "epg-error" :
                         candidates.isEmpty() ? "no-candidates" : "candidates";
-                    // Never overwrite a manual or previously saved selection.
-                    TverEpgSearch.Candidate unique = TverEpgSearch.confident(candidates);
-                    if (unique != null && loadedSpec.isEmpty()
+                    TverEpgSearch.Candidate selected = TverEpgSearch.confident(candidates);
+                    // Never override a source chosen manually, nor a different
+                    // episode that started while the search was in flight.
+                    if (selected != null && loadedSpec.isEmpty()
                         && context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
                             .getBoolean(AUTO_ENABLED,true)) {
-                        select(context,unique);
+                        Log.i(TAG, "Automatically selected confirmed broadcast for "
+                            + series + " / " + subtitle);
+                        select(context, selected);
                         searchStatus = "auto-selected";
                     }
                 });
@@ -188,7 +211,7 @@ final class NicoAutoSourceController {
                     if (generation != searchGeneration || !originalKey.equals(episodeKey))
                         return;
                     searchStatus = "epg-error";
-                    Log.w(TAG,"EPG auto search failed",error);
+                    Log.w(TAG, "Automatic broadcast search failed", error);
                 });
             }
         },"Morphe-EPG").start();

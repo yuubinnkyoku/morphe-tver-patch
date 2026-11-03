@@ -156,3 +156,26 @@ released, not on each animation frame. The default style preserves the earlier
 
 NCOverlay's full search options, NG filters, multi-source slots and comment
 art are not yet implemented.
+
+
+## 2026-11-03: broader automatic archive discovery
+
+Auto-search tries TVer terrestrial EPG first. If there is no safe automatic
+match, it searches TVer BS EPG too, then uses Syoboi Calendar's historic
+programme database as a fallback for episodic shows, especially anime.
+Syoboi Calendar matches the normalized series and either the explicit episode
+number or a sufficiently exact subtitle, then looks up original broadcasts
+through ProgramByCount. Only completed airings on known mapped Jikkyo
+channels become candidates; the video watch date is never used as a substitute.
+
+Multiple airings with the same high-confidence series/episode description can
+be resolved to the most recent completed broadcast. Equal-confidence results
+with conflicting episode descriptions still require manual confirmation.
+Existing per-episode manually selected sources are not overwritten. The BS
+button in the candidate picker remains a BS-only manual lookup.
+
+Note: TVer EPG covers recent days only. Syoboi Calendar focuses on anime and
+related broadcasts; older dramas, TVer-only works, marathon programme blocks
+and titles without a trustworthy episode number/subtitle can still require
+manual source selection. A matched broadcast does not guarantee that a Jikkyo
+archive exists or contains comments. The published API may change.
