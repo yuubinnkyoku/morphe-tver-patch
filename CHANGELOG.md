@@ -1,3 +1,9 @@
+## [1.2.0-dev.18](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.17...v1.2.0-dev.18) (2026-11-03)
+
+### ✨ New Features
+
+* **tver:** broaden automatic Jikkyo discovery using BS and Syobocal ([f32b228](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/f32b228489d720cf0b82aeeb2b5d3782ddbb2f16))
+
 ## [1.2.0-dev.17](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.16...v1.2.0-dev.17) (2026-11-03)
 
 ### ✨ New Features
