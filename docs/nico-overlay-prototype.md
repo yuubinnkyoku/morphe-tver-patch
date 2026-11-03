@@ -198,3 +198,20 @@ transferred into the existing WebView in batches. A failed/empty broadcast
 does not discard successful ones. This is NCOverlay-inspired behavior, not a
 guarantee that an old broadcast archive is available. Default 60fps rendering
 and fullscreen View layering are unchanged. On-device verification is pending.
+
+## 2026-11-03: fix empty Syoboi historical results for season titles
+
+Reproduced using Syoboi Calendar's live TitleSearch API:
+`Search=孤独のグルメ Season4` returns zero titles, while searching
+`孤独のグルメ` returns the registered Season4 record (`TID=3439`).
+The Season4 episode 2 subtitle and `ProgramByCount&TID=3439&Count=2`
+broadcast record are both available.
+
+The historical search now attempts a short season-free title query when a
+full-title query has no exact matches, **without relaxing the exact season
+check on the returned titles**. This fixes false "候補なし" results for
+a class of titles with space-delimited season suffixes, while still
+rejecting different seasons and episodes. Query terms and final candidate
+counts are recorded under `MorpheNicoOverlay` for device diagnostics.
+This verifies discovery only; archive availability still depends on the
+selected broadcaster and original air date.

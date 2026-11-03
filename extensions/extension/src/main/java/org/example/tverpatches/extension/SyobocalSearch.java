@@ -2,6 +2,7 @@ package org.example.tverpatches.extension;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -17,6 +18,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -30,6 +33,7 @@ import java.util.Map;
  * Channel map: Midra429/nco-utils CHANNEL_IDS_JIKKYO_SYOBOCAL (MIT).
  */
 final class SyobocalSearch {
+    private static final String TAG = "MorpheNicoOverlay";
     private static final Map<String,String> CHANNELS = new HashMap<>();
     private static final ZoneId JST = ZoneId.of("Asia/Tokyo");
     private static final DateTimeFormatter DATE_SECONDS =
@@ -77,6 +81,7 @@ final class SyobocalSearch {
             }
             return new JSONObject(body.toString());
         } catch (Exception error) {
+            Log.w(TAG,"Syoboi API request failed: " + query,error);
             return null;
         } finally {
             if (connection != null) connection.disconnect();
@@ -108,6 +113,55 @@ final class SyobocalSearch {
             .replaceAll("第([0-9]+)期", "season$1");
     }
 
+
+    /**
+     * TitleSearch is keyword-oriented, not an exact-title lookup. Some names
+     * containing ASCII season labels ("孤独のグルメ Season4") return an empty
+     * response even when the matching title is registered.
+     *
+     * Use the full title first, then broaden the SEARCH TERM only. The exact
+     * normalized title/season check below still prevents cross-season mixing.
+     */
+    private static List<String> titleSearchTerms(String title) {
+        LinkedHashSet<String> terms = new LinkedHashSet<>();
+        String full = java.text.Normalizer.normalize(title.trim(),
+            java.text.Normalizer.Form.NFKC);
+        if (full.length() < 3) return new ArrayList<>();
+        terms.add(full);
+        String base = full.replaceFirst(
+            "(?i)\\s*(?:season\\s*[0-9]+|第\\s*[0-9]+期|\\([0-9]+\\))\\s*$",
+            "").trim();
+        if (base.length() >= 3) terms.add(base);
+        int space = full.indexOf(' ');
+        if (space >= 3) terms.add(full.substring(0,space).trim());
+        return new ArrayList<>(terms);
+    }
+
+    private static List<JSONObject> titleMatches(String title) {
+        String expected = cleanSeries(title);
+        LinkedHashMap<String,JSONObject> matches = new LinkedHashMap<>();
+        for (String term : titleSearchTerms(title)) {
+            JSONObject response = request("Req=TitleSearch&Limit=50&Search="
+                + URLEncoder.encode(term, StandardCharsets.UTF_8));
+            if (response == null) continue;
+            JSONObject titles = response.optJSONObject("Titles");
+            if (titles == null) continue;
+            java.util.Iterator<String> keys = titles.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                JSONObject entry = titles.optJSONObject(key);
+                if (entry == null || !expected.equals(cleanSeries(
+                    entry.optString("Title","")))) continue;
+                String tid = entry.optString("TID",key);
+                if (tid.matches("[0-9]{1,8}")) matches.put(tid,entry);
+            }
+            Log.i(TAG,"Syoboi TitleSearch '" + term + "': exact title matches="
+                + matches.size());
+            if (!matches.isEmpty()) break;
+        }
+        return new ArrayList<>(matches.values());
+    }
+
     static TverEpgSearch.Result search(String title, String episode) {
         String expected = cleanSeries(title);
         if (expected.length() < 3) return new TverEpgSearch.Result(
@@ -120,26 +174,18 @@ final class SyobocalSearch {
         }
         // Search by the series name. The database is primarily for anime;
         // ordinary dramas may have no corresponding entry.
-        JSONObject titles = request("Req=TitleSearch&Limit=15&Search="
-            + URLEncoder.encode(title, StandardCharsets.UTF_8));
-        if (titles == null) return new TverEpgSearch.Result(
-            Collections.emptyList(), 0);
-        JSONObject values = titles.optJSONObject("Titles");
-        if (values == null) return new TverEpgSearch.Result(
-            Collections.emptyList(), 1);
+        List<JSONObject> titles = titleMatches(title);
+        if (titles.isEmpty()) {
+            Log.i(TAG,"Syoboi has no exact series match for: "+title);
+            return new TverEpgSearch.Result(Collections.emptyList(), 1);
+        }
         List<TverEpgSearch.Candidate> candidates = new ArrayList<>();
         long finishedBy = Instant.now().getEpochSecond() - 600;
         int tried = 0;
-        java.util.Iterator<String> keys = values.keys();
-        while (keys.hasNext() && tried < 4) {
-            String key = keys.next();
-            JSONObject entry = values.optJSONObject(key);
-            if (entry == null) continue;
+        for (JSONObject entry : titles) {
+            if (tried++ >= 4) break;
             String series = entry.optString("Title", "");
-            if (!expected.equals(cleanSeries(series))) continue;
-            String tid = entry.optString("TID", key);
-            if (!tid.matches("[0-9]{1,8}")) continue;
-            tried++;
+            String tid = entry.optString("TID", "");
 
             int count = requestedNumber;
             String subtitle = "";
@@ -211,6 +257,8 @@ final class SyobocalSearch {
             (TverEpgSearch.Candidate item) -> item.start).reversed());
         if (candidates.size() > 32)
             candidates = new ArrayList<>(candidates.subList(0,32));
+        Log.i(TAG,"Syoboi historical broadcast candidates for " + title
+            + " / " + episode + ": " + candidates.size());
         return new TverEpgSearch.Result(candidates, 1);
     }
 
