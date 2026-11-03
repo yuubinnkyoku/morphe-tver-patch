@@ -438,26 +438,60 @@ public final class NicoOverlayBridge {
         return badge;
     }
 
-    private static void bringOverlaysToFront(ViewGroup host) {
-        PassThroughWebView web = webRef.get();
-        TextView badge = badgeRef.get();
-        TextView sourceBadge = sourceBadgeRef.get();
-        boolean hasBadge = badge != null && badge.getParent() == host;
-        boolean hasSource = sourceBadge != null && sourceBadge.getParent() == host;
-        if (web != null && web.getParent() == host) {
-            int expected = host.getChildCount() - 1 - (hasBadge ? 1 : 0)
-                - (hasSource ? 1 : 0);
-            if (host.indexOfChild(web) != expected) web.bringToFront();
+    /**
+     * The WebView's containing layer belongs to the Activity decor rather than
+     * to Compose's inline video host. Position it exactly over the video host
+     * as the layout changes between portrait inline and fullscreen.
+     *
+     * This does not modify the video Surface, Window security flags, or player.
+     */
+    private static void updateOverlayGeometry(ViewGroup host) {
+        FrameLayout layer = overlayLayerRef.get();
+        if (host == null || layer == null || !(layer.getParent() instanceof ViewGroup))
+            return;
+        ViewGroup parent = (ViewGroup) layer.getParent();
+        boolean visible = host.isAttachedToWindow() && host.isShown()
+            && host.getWidth() > 0 && host.getHeight() > 0;
+        if (!visible) {
+            if (layer.getVisibility() != View.INVISIBLE)
+                layer.setVisibility(View.INVISIBLE);
+            return;
         }
-        if (hasBadge && host.indexOfChild(badge) !=
-                host.getChildCount() - 1 - (hasSource ? 1 : 0)) badge.bringToFront();
-        if (hasSource && host.indexOfChild(sourceBadge) != host.getChildCount() - 1)
-            sourceBadge.bringToFront();
-        // The decor button must also stay above later Compose/AndroidView
-        // decorations. Reordering only that button does not affect the
-        // player SurfaceView or the secure video composition.
-        if (sourceBadge != null && sourceBadge.getParent() instanceof ViewGroup
-                && sourceBadge.getParent() != host) {
+        if (layer.getParent() != host) {
+            int[] hostLocation = new int[2], parentLocation = new int[2];
+            host.getLocationOnScreen(hostLocation);
+            parent.getLocationOnScreen(parentLocation);
+            int x = hostLocation[0] - parentLocation[0];
+            int y = hostLocation[1] - parentLocation[1];
+            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams)
+                layer.getLayoutParams();
+            if (params.width != host.getWidth() || params.height != host.getHeight()
+                    || params.leftMargin != x || params.topMargin != y) {
+                params.width = host.getWidth();
+                params.height = host.getHeight();
+                params.leftMargin = x;
+                params.topMargin = y;
+                layer.setLayoutParams(params);
+                Log.d(TAG, "Comment overlay geometry x=" + x + " y=" + y
+                    + " w=" + params.width + " h=" + params.height);
+            }
+        }
+        if (layer.getVisibility() != View.VISIBLE)
+            layer.setVisibility(View.VISIBLE);
+    }
+
+    private static void bringOverlaysToFront(ViewGroup host) {
+        FrameLayout layer = overlayLayerRef.get();
+        TextView sourceBadge = sourceBadgeRef.get();
+        if (layer != null && layer.getParent() instanceof ViewGroup) {
+            ViewGroup parent = (ViewGroup) layer.getParent();
+            // A sibling of the Activity's ComposeView, not a child of it.
+            // Do not cause endless reordering when the button is already last.
+            int targetIndex = parent.getChildCount() - 1
+                - (sourceBadge != null && sourceBadge.getParent() == parent ? 1 : 0);
+            if (parent.indexOfChild(layer) != targetIndex) layer.bringToFront();
+        }
+        if (sourceBadge != null && sourceBadge.getParent() instanceof ViewGroup) {
             ViewGroup parent = (ViewGroup) sourceBadge.getParent();
             if (parent.indexOfChild(sourceBadge) != parent.getChildCount() - 1)
                 sourceBadge.bringToFront();
