@@ -1,3 +1,9 @@
+## [1.2.0-dev.24](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.23...v1.2.0-dev.24) (2026-11-03)
+
+### ✨ New Features
+
+* **tver:** automatic NicoNico search and per-source comment controls ([40e4cc4](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/40e4cc4a7e69f98fe0a58cfcbecfc8dfe83ec708))
+
 ## [1.2.0-dev.23](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.22...v1.2.0-dev.23) (2026-11-03)
 
 ### 🐛 Bug Fixes
