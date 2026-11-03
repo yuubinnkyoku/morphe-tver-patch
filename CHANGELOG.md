@@ -1,3 +1,9 @@
+## [1.2.0-dev.20](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.19...v1.2.0-dev.20) (2026-11-03)
+
+### 🐛 Bug Fixes
+
+* **tver:** retry historical title lookup with season-free search terms ([fc9f356](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/fc9f35606f768398c5b23e06180d9676e964e3b7))
+
 ## [1.2.0-dev.19](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.18...v1.2.0-dev.19) (2026-11-03)
 
 ### 🐛 Bug Fixes

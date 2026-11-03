@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-11-03T07:14:49",
-  "description": "## [1.2.0-dev.19](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.18...v1.2.0-dev.19) (2026-11-03)\n\n### 🐛 Bug Fixes\n\n* **tver:** import ArrayList for multi-broadcast archive loader ([5cd97e3](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5cd97e337357ae20cd29b150cac67f2ec51f1360))\n\n### ✨ New Features\n\n* **tver:** load all verified Jikkyo reruns for current episode ([6584076](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/65840765f8762e7aed07d9b270bfe1c564b1f35d))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.2.0-dev.19/patches-1.2.0-dev.19.mpp",
+  "created_at": "2026-11-03T07:38:21",
+  "description": "## [1.2.0-dev.20](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.19...v1.2.0-dev.20) (2026-11-03)\n\n### 🐛 Bug Fixes\n\n* **tver:** retry historical title lookup with season-free search terms ([fc9f356](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/fc9f35606f768398c5b23e06180d9676e964e3b7))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.2.0-dev.20/patches-1.2.0-dev.20.mpp",
   "signature_download_url": "",
-  "version": "1.2.0-dev.19"
+  "version": "1.2.0-dev.20"
 }
