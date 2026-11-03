@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-11-03T06:03:47",
-  "description": "## [1.2.0-dev.16](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.15...v1.2.0-dev.16) (2026-11-03)\n\n### 🐛 Bug Fixes\n\n* position decor-level Nico overlay over player during fullscreen resizing ([f8be430](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/f8be4305ec26812a17e72c0bd6b27f25c94ae8a5))\n* retain Nico WebView in decor overlay across fullscreen Compose handoff ([3322754](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3322754459890618bd6fbf133899250dffde7352))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.2.0-dev.16/patches-1.2.0-dev.16.mpp",
+  "created_at": "2026-11-03T06:39:57",
+  "description": "## [1.2.0-dev.17](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.16...v1.2.0-dev.17) (2026-11-03)\n\n### ✨ New Features\n\n* **tver:** add NCOverlay-inspired comment quick panel ([cfc28b9](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/cfc28b9b3de4056d210dda2913021d09bb921945))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.2.0-dev.17/patches-1.2.0-dev.17.mpp",
   "signature_download_url": "",
-  "version": "1.2.0-dev.16"
+  "version": "1.2.0-dev.17"
 }

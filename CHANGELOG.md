@@ -1,3 +1,9 @@
+## [1.2.0-dev.17](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.16...v1.2.0-dev.17) (2026-11-03)
+
+### ✨ New Features
+
+* **tver:** add NCOverlay-inspired comment quick panel ([cfc28b9](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/cfc28b9b3de4056d210dda2913021d09bb921945))
+
 ## [1.2.0-dev.16](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.15...v1.2.0-dev.16) (2026-11-03)
 
 ### 🐛 Bug Fixes
