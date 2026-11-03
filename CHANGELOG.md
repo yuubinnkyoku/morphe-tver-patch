@@ -1,3 +1,9 @@
+## [1.2.0-dev.21](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.20...v1.2.0-dev.21) (2026-11-03)
+
+### ✨ New Features
+
+* **tver:** align Jikkyo archive title matching with NCOverlay nco-utils ([fed5cb4](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/fed5cb4a6fdd1a7ff54b769fb86cd9e453b791fe))
+
 ## [1.2.0-dev.20](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.19...v1.2.0-dev.20) (2026-11-03)
 
 ### 🐛 Bug Fixes
