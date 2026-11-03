@@ -147,6 +147,16 @@ public final class NicoOverlayBridge {
         loadJikkyoSource(context, spec, notify);
     }
 
+    static void openEpisodeCommentSources(Context context, List<String> specifications,
+                                          boolean notify) {
+        if (specifications == null || specifications.isEmpty()) return;
+        if (specifications.size() == 1) {
+            loadJikkyoSource(context,specifications.get(0),notify);
+            return;
+        }
+        loadJikkyoSources(context,specifications,notify);
+    }
+
     static void clearEpisodeComments() {
         commentSourceGeneration++;
         commentSourceCount = 0;
@@ -946,6 +956,68 @@ public final class NicoOverlayBridge {
      * bounded JSON arrays to the local, network-blocked WebView. The generation
      * guard prevents stale episodes from receiving data after navigation.
      */
+
+    /**
+     * Combine older broadcasts in the SAME video-relative timeline, retaining
+     * per-source failures without discarding successful archives. Memory and
+     * WebView import are bounded across all broadcasts.
+     */
+    private static void loadJikkyoSources(Context context, List<String> specifications,
+                                          boolean showToast) {
+        PassThroughWebView web = webRef.get();
+        if (web == null || !ready) {
+            commentSourceStatus = "open-playback";
+            return;
+        }
+        final int generation = ++commentSourceGeneration;
+        commentSourceStatus = "loading";
+        commentSourceError = "";
+        commentSourceCount = 0;
+        final List<String> input = new ArrayList<>(
+            new java.util.LinkedHashSet<>(specifications));
+        new Thread(() -> {
+            List<String> combined = new ArrayList<>();
+            int total = 0, succeeded = 0, failed = 0;
+            String firstFailure = "";
+            for (String spec : input) {
+                if (total >= 30000 || succeeded + failed >= 32) break;
+                try {
+                    JikkyoCommentSource.Result part =
+                        JikkyoCommentSource.fetch(spec,30000-total);
+                    combined.addAll(part.batches);
+                    total += part.count;
+                    succeeded++;
+                } catch (Exception error) {
+                    failed++;
+                    if (firstFailure.isEmpty()) {
+                        String message = error.getMessage();
+                        firstFailure = message == null ? error.toString() : message;
+                    }
+                    Log.w(TAG,"Failed to load one broadcast archive",error);
+                }
+            }
+            final int count = total, successes = succeeded, failures = failed;
+            final String errorText = firstFailure;
+            MAIN.post(() -> {
+                if (generation != commentSourceGeneration || webRef.get() != web)
+                    return;
+                if (successes == 0 && failures > 0) {
+                    commentSourceStatus = "error";
+                    commentSourceError = errorText;
+                    if (showToast)
+                        Toast.makeText(context,"実況の取得に失敗: "+errorText,
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+                Log.i(TAG,"Merged " + successes + " broadcast archives; "
+                    + "failed=" + failures + ", comments=" + count);
+                web.evaluateJavascript(
+                    "window.MorpheNico&&window.MorpheNico.beginImport();",null);
+                deliverJikkyoBatches(web,combined,0,generation,count,showToast);
+            });
+        },"Morphe-JikkyoGroup").start();
+    }
+
     private static void loadJikkyoSource(Context context, String spec, boolean showToast) {
         PassThroughWebView web = webRef.get();
         if (web == null || !ready) {

@@ -179,3 +179,22 @@ related broadcasts; older dramas, TVer-only works, marathon programme blocks
 and titles without a trustworthy episode number/subtitle can still require
 manual source selection. A matched broadcast does not guarantee that a Jikkyo
 archive exists or contains comments. The published API may change.
+
+
+## 2026-11-03: group auto-loading to match NCOverlay rerun behavior
+
+A single TVer episode may correspond to several past broadcasts (including
+reruns). Unlike the previous newest-one-only implementation, auto-search now
+checks terrestrial EPG, BS EPG and Syoboi Calendar's historical programme
+lookup, and collects every high-confidence broadcast of the same episode.
+It retrieves each available Jikkyo archive and combines their comments in the
+episode-relative timeline. The selection is cached for reopening the episode.
+Manual source selection overrides the automatic group; clearing removes it.
+The time offset editor applies its correction to every archive in the group.
+
+Mobile resource bounds: at most 32 broadcast entries and 30,000 comments
+across the group; archives are read sequentially off the UI thread and
+transferred into the existing WebView in batches. A failed/empty broadcast
+does not discard successful ones. This is NCOverlay-inspired behavior, not a
+guarantee that an old broadcast archive is available. Default 60fps rendering
+and fullscreen View layering are unchanged. On-device verification is pending.

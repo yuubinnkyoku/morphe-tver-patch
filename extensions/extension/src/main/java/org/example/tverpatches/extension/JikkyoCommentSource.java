@@ -80,7 +80,12 @@ final class JikkyoCommentSource {
 
     // MUST run on a background thread. Caller handles lifecycle and delivery.
     static Result fetch(String raw) throws Exception {
+        return fetch(raw, MAX_COMMENTS);
+    }
+
+    static Result fetch(String raw, int maxCount) throws Exception {
         Spec spec = parse(raw);
+        int limit = Math.min(MAX_COMMENTS,Math.max(1,maxCount));
         long now = Instant.now().getEpochSecond();
         if (spec.end > now) {
             throw new IOException("放送終了前のため過去ログは取得できません");
@@ -119,7 +124,7 @@ final class JikkyoCommentSource {
             List<String> batches = new ArrayList<>();
             JSONArray batch = new JSONArray();
             int count = 0;
-            for (int i = 0; i < packet.length() && count < MAX_COMMENTS; i++) {
+            for (int i = 0; i < packet.length() && count < limit; i++) {
                 JSONObject entry = packet.optJSONObject(i);
                 JSONObject chat = entry == null ? null : entry.optJSONObject("chat");
                 if (chat == null) continue;

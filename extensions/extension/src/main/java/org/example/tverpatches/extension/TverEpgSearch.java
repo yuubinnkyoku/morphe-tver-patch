@@ -218,7 +218,7 @@ final class TverEpgSearch {
                 }
             }
             if (!duplicate) unique.add(candidate);
-            if (unique.size() >= 12) break;
+            if (unique.size() >= 32) break;
         }
         return new Result(unique, success);
     }
@@ -247,6 +247,29 @@ final class TverEpgSearch {
         return top;
     }
 
+
+    /** Select every verified airing of the SAME TVer episode, including reruns. */
+    static List<Candidate> automaticGroup(String series, String episode,
+                                          List<Candidate> choices) {
+        int expectedNo = episodeNumber(episode);
+        String expectedText = episodeDescription(episode);
+        List<Candidate> group = new ArrayList<>();
+        for (Candidate c : choices) {
+            if (c.score < 100 || MARATHON.matcher(c.episode).find()) continue;
+            int actualNo = episodeNumber(c.episode);
+            if (expectedNo >= 0 && actualNo >= 0 && expectedNo != actualNo)
+                continue;
+            String actualText = episodeDescription(c.episode);
+            if (expectedText.length() >= 6 && actualText.length() >= 6
+                && !expectedText.equals(actualText)
+                && !expectedText.contains(actualText)
+                && !actualText.contains(expectedText)) continue;
+            group.add(c);
+        }
+        group.sort(Comparator.comparingLong((Candidate c) -> c.start).reversed());
+        return merge(group, Collections.emptyList());
+    }
+
     /** Merge different broadcaster schedules without duplicate time slots. */
     static List<Candidate> merge(List<Candidate> first, List<Candidate> second) {
         List<Candidate> all = new ArrayList<>(first);
@@ -263,7 +286,7 @@ final class TverEpgSearch {
                 }
             }
             if (!seen) unique.add(next);
-            if (unique.size() >= 12) break;
+            if (unique.size() >= 32) break;
         }
         return unique;
     }

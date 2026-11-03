@@ -18,7 +18,10 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import org.json.JSONArray;
 import java.util.Locale;
 
 /**
@@ -31,6 +34,7 @@ final class NicoAutoSourceController {
     static final String AUTO_ENABLED = "nico_epg_auto_search";
     private static final String PREFS = "morphe.tver.settings";
     private static final String SOURCE_PREFIX = "nico_episode_source_";
+    private static final String AUTO_GROUP_PREFIX = "nico_episode_auto_group_";
     private static final String PENDING_SOURCE = "nico_source_for_next_episode";
     private static final String TAG = "MorpheNicoOverlay";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
@@ -60,16 +64,56 @@ final class NicoAutoSourceController {
         }
     }
 
+
+    private static List<String> autoGroupForCurrent(Context context) {
+        String key = preferenceKey();
+        if (key.isEmpty()) return Collections.emptyList();
+        String raw = context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
+            .getString(AUTO_GROUP_PREFIX + key, "");
+        if (raw.isEmpty()) return Collections.emptyList();
+        try {
+            JSONArray array = new JSONArray(raw);
+            LinkedHashSet<String> unique = new LinkedHashSet<>();
+            for (int i = 0; i < array.length() && unique.size() < 32; i++) {
+                String item = array.optString(i, "");
+                if (item.isEmpty()) continue;
+                JikkyoCommentSource.validate(item);
+                unique.add(item);
+            }
+            return new ArrayList<>(unique);
+        } catch (Exception invalid) {
+            Log.w(TAG,"Saved archive group is invalid",invalid);
+            return Collections.emptyList();
+        }
+    }
+
+    private static void setAutoGroup(Context context, List<String> sources) {
+        String key = preferenceKey();
+        if (key.isEmpty() || sources.isEmpty()) return;
+        JSONArray array = new JSONArray();
+        for (String item : sources) array.put(item);
+        context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit()
+            .remove(key)
+            .putString(AUTO_GROUP_PREFIX + key, array.toString())
+            .remove(PENDING_SOURCE).apply();
+        loadedSpec = "auto-group";
+    }
+
     static String sourceForCurrent(Context context) {
         String key = preferenceKey();
-        return key.isEmpty() ? "" : context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
+        if (key.isEmpty()) return "";
+        String manual = context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
             .getString(key,"");
+        if (!manual.isEmpty()) return manual;
+        List<String> group = autoGroupForCurrent(context);
+        return group.isEmpty() ? "" : group.get(0);
     }
 
     static void setManual(Context context, String spec) {
         String key = preferenceKey();
         SharedPreferences.Editor edit =
             context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit();
+        if (!key.isEmpty()) edit.remove(AUTO_GROUP_PREFIX + key);
         if (spec == null || spec.isEmpty()) {
             if (!key.isEmpty()) edit.remove(key);
             edit.remove(PENDING_SOURCE);
@@ -123,6 +167,13 @@ final class NicoAutoSourceController {
             searchStatus = "identified";
             NicoOverlayBridge.clearEpisodeComments();
             Log.i(TAG,"TVer episode identified: "+program+" / "+episode);
+            List<String> savedGroup = autoGroupForCurrent(context);
+            if (!savedGroup.isEmpty()) {
+                loadedSpec = "auto-group";
+                searchStatus = "saved-auto-group";
+                NicoOverlayBridge.openEpisodeCommentSources(context,savedGroup,false);
+                return;
+            }
             String saved = sourceForCurrent(context);
             if (saved.isEmpty()) {
                 String pending = context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
@@ -155,11 +206,11 @@ final class NicoAutoSourceController {
     static void search(Context context, boolean bs) {
         if (program.isEmpty() || episode.isEmpty()) {
             searchStatus = "waiting-title";
-            Toast.makeText(context,"動画を開いて番組名を取得してください",
+            Toast.makeText(context, "動画を開いて番組名を取得してください",
                 Toast.LENGTH_SHORT).show();
             return;
         }
-        final String originalKey = episodeKey;
+        final String key = episodeKey;
         final String series = program, subtitle = episode;
         final int generation = ++searchGeneration;
         bsSearch = bs;
@@ -167,51 +218,63 @@ final class NicoAutoSourceController {
         candidates = new ArrayList<>();
         new Thread(() -> {
             try {
-                // The manual BS button still searches BS exclusively. Automatic
-                // searches try terrestrial, then BS, then older broadcast
-                // history from Syoboi Calendar if no safe match was found.
-                TverEpgSearch.Result first = TverEpgSearch.search(series, subtitle, bs);
-                List<TverEpgSearch.Candidate> found =
-                    new ArrayList<>(first.candidates);
-                int successfulSources = first.successfulDays;
-                if (!bs && TverEpgSearch.confident(found) == null) {
-                    TverEpgSearch.Result satellite =
-                        TverEpgSearch.search(series, subtitle, true);
-                    found = TverEpgSearch.merge(found, satellite.candidates);
-                    successfulSources += satellite.successfulDays;
+                java.util.concurrent.ExecutorService executor =
+                    java.util.concurrent.Executors.newFixedThreadPool(bs ? 1 : 3);
+                List<TverEpgSearch.Candidate> found = new ArrayList<>();
+                int success = 0;
+                try {
+                    List<java.util.concurrent.Callable<TverEpgSearch.Result>> tasks =
+                        new ArrayList<>();
+                    if (!bs) {
+                        tasks.add(() -> TverEpgSearch.search(series,subtitle,false));
+                        tasks.add(() -> SyobocalSearch.search(series,subtitle));
+                    }
+                    tasks.add(() -> TverEpgSearch.search(series,subtitle,true));
+                    List<java.util.concurrent.Future<TverEpgSearch.Result>> futures =
+                        executor.invokeAll(tasks, 90, java.util.concurrent.TimeUnit.SECONDS);
+                    for (java.util.concurrent.Future<TverEpgSearch.Result> future : futures) {
+                        if (future.isCancelled()) continue;
+                        try {
+                            TverEpgSearch.Result result = future.get();
+                            success += result.successfulDays;
+                            found = TverEpgSearch.merge(found,result.candidates);
+                        } catch (java.util.concurrent.ExecutionException error) {
+                            Log.w(TAG,"One archive discovery source failed",error);
+                        }
+                    }
+                } finally {
+                    executor.shutdownNow();
                 }
-                if (!bs && TverEpgSearch.confident(found) == null) {
-                    TverEpgSearch.Result older =
-                        SyobocalSearch.search(series, subtitle);
-                    found = TverEpgSearch.merge(found, older.candidates);
-                    successfulSources += older.successfulDays;
-                }
-                final List<TverEpgSearch.Candidate> resolved = found;
-                final int sources = successfulSources;
+                final List<TverEpgSearch.Candidate> results = found;
+                final int available = success;
                 MAIN.post(() -> {
-                    if (generation != searchGeneration || !originalKey.equals(episodeKey))
-                        return;
-                    candidates = resolved;
-                    searchStatus = sources == 0 ? "epg-error" :
+                    if (generation != searchGeneration || !key.equals(episodeKey)) return;
+                    candidates = results;
+                    searchStatus = available == 0 ? "epg-error" :
                         candidates.isEmpty() ? "no-candidates" : "candidates";
-                    TverEpgSearch.Candidate selected = TverEpgSearch.confident(candidates);
-                    // Never override a source chosen manually, nor a different
-                    // episode that started while the search was in flight.
-                    if (selected != null && loadedSpec.isEmpty()
-                        && context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
+                    // NCOverlay-style: all verified past broadcasts of the
+                    // current episode are loaded as one synchronized group.
+                    List<TverEpgSearch.Candidate> group =
+                        TverEpgSearch.automaticGroup(series,subtitle,candidates);
+                    if (!group.isEmpty() && loadedSpec.isEmpty() &&
+                        context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
                             .getBoolean(AUTO_ENABLED,true)) {
-                        Log.i(TAG, "Automatically selected confirmed broadcast for "
-                            + series + " / " + subtitle);
-                        select(context, selected);
+                        List<String> specifications = new ArrayList<>();
+                        for (TverEpgSearch.Candidate item : group)
+                            specifications.add(item.specification(0));
+                        setAutoGroup(context,specifications);
+                        NicoOverlayBridge.openEpisodeCommentSources(
+                            context,specifications,false);
                         searchStatus = "auto-selected";
+                        Log.i(TAG,"Auto loading " + specifications.size()
+                            + " broadcasts for " + series + " / " + subtitle);
                     }
                 });
             } catch (Exception error) {
                 MAIN.post(() -> {
-                    if (generation != searchGeneration || !originalKey.equals(episodeKey))
-                        return;
+                    if (generation != searchGeneration || !key.equals(episodeKey)) return;
                     searchStatus = "epg-error";
-                    Log.w(TAG, "Automatic broadcast search failed", error);
+                    Log.w(TAG,"Archive discovery failed",error);
                 });
             }
         },"Morphe-EPG").start();
@@ -251,8 +314,10 @@ final class NicoAutoSourceController {
         String current = sourceForCurrent(activity);
         List<TverEpgSearch.Candidate> options = new ArrayList<>(candidates);
         String[] labels = new String[options.size() + 2];
+        List<String> group = autoGroupForCurrent(activity);
         labels[0] = "現在のコメントを調整 / 解除\n"
-            + (current.isEmpty() ? "未選択" : current)
+            + (group.isEmpty() ? (current.isEmpty() ? "未選択" : current)
+                : group.size() + "放送分を重ね合わせ")
             + "　（"+searchStatus+"）";
         labels[1] = "放送局・放送日時を手動で指定";
         for (int i=0;i<options.size();i++) labels[i+2]=options.get(i).label();
@@ -264,7 +329,7 @@ final class NicoAutoSourceController {
                 else if (which==1) showManualSourceEditor(activity);
                 else select(activity,options.get(which-2));
             })
-            .setPositiveButton("地デジ検索",(d,w)->search(activity,false))
+            .setPositiveButton("地デジ・履歴検索",(d,w)->search(activity,false))
             .setNeutralButton("BS検索",(d,w)->search(activity,true))
             .setNegativeButton("閉じる",null)
             .show();
@@ -313,6 +378,7 @@ final class NicoAutoSourceController {
     }
 
     private static void showSourceControls(Activity activity) {
+        List<String> group = autoGroupForCurrent(activity);
         String current = sourceForCurrent(activity);
         if (current.isEmpty()) {
             new AlertDialog.Builder(activity).setTitle("コメント未選択")
@@ -335,7 +401,9 @@ final class NicoAutoSourceController {
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(32,8,32,4);
         TextView help = new TextView(activity);
-        help.setText("コメントの時刻補正（秒）\n正の値で遅らせ、負の値で早めます。");
+        help.setText("コメントの時刻補正（秒）\n正の値で遅らせ、負の値で早めます。"
+            + (group.isEmpty() ? "" : "\n" + group.size()
+                + "放送分に一括適用します。"));
         layout.addView(help);
         layout.addView(offset);
         new AlertDialog.Builder(activity)
@@ -347,8 +415,18 @@ final class NicoAutoSourceController {
                     int seconds = Integer.parseInt(offset.getText().toString().trim());
                     if (Math.abs(seconds)>3600) throw new NumberFormatException();
                     String spec = parts[0]+"|"+parts[1]+"|"+parts[2]+"|"+seconds;
-                    setManual(activity,spec);
-                    NicoOverlayBridge.openEpisodeCommentSource(activity,spec,true);
+                    if (group.isEmpty()) {
+                        setManual(activity,spec);
+                        NicoOverlayBridge.openEpisodeCommentSource(activity,spec,true);
+                    } else {
+                        List<String> changed = new ArrayList<>();
+                        for (String item : group) {
+                            String[] f = item.split("\\|",-1);
+                            changed.add(f[0]+"|"+f[1]+"|"+f[2]+"|"+seconds);
+                        }
+                        setAutoGroup(activity,changed);
+                        NicoOverlayBridge.openEpisodeCommentSources(activity,changed,true);
+                    }
                 } catch(NumberFormatException error) {
                     Toast.makeText(activity,"補正は±3600秒以内です",
                         Toast.LENGTH_LONG).show();

@@ -86,6 +86,10 @@ final class SyobocalSearch {
     private static long epoch(String raw) {
         try {
             String normalized = raw.trim().replace('T', ' ');
+            if (normalized.matches("[0-9]{10,13}")) {
+                long number = Long.parseLong(normalized);
+                return normalized.length() == 13 ? number / 1000 : number;
+            }
             if (normalized.length() >= 19)
                 return LocalDateTime.parse(normalized.substring(0,19),DATE_SECONDS)
                     .atZone(JST).toEpochSecond();
@@ -139,6 +143,21 @@ final class SyobocalSearch {
 
             int count = requestedNumber;
             String subtitle = "";
+            if (count >= 0 && requestedSubtitle.length() >= 6) {
+                JSONObject subtitles = request("Req=SubTitles&TID=" + tid);
+                JSONObject outer = subtitles == null ? null :
+                    subtitles.optJSONObject("SubTitles");
+                JSONObject byCount = outer == null ? null : outer.optJSONObject(tid);
+                if (byCount != null) {
+                    String available = byCount.optString(String.valueOf(count), "");
+                    String canonical = TverEpgSearch.normalize(available);
+                    if (canonical.length() >= 6 &&
+                        !requestedSubtitle.equals(canonical) &&
+                        !requestedSubtitle.contains(canonical) &&
+                        !canonical.contains(requestedSubtitle)) continue;
+                    subtitle = available;
+                }
+            }
             if (count < 0) {
                 JSONObject subs = request("Req=SubTitles&TID=" + tid);
                 JSONObject all = subs == null ? null : subs.optJSONObject("SubTitles");
@@ -190,8 +209,8 @@ final class SyobocalSearch {
         }
         candidates.sort(Comparator.comparingLong(
             (TverEpgSearch.Candidate item) -> item.start).reversed());
-        if (candidates.size() > 12)
-            candidates = new ArrayList<>(candidates.subList(0,12));
+        if (candidates.size() > 32)
+            candidates = new ArrayList<>(candidates.subList(0,32));
         return new TverEpgSearch.Result(candidates, 1);
     }
 
