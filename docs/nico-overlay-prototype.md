@@ -215,3 +215,35 @@ rejecting different seasons and episodes. Query terms and final candidate
 counts are recorded under `MorpheNicoOverlay` for device diagnostics.
 This verifies discovery only; archive availability still depends on the
 selected broadcaster and original air date.
+
+## 2026-11-03: adopt NCOverlay/nco-utils historic search semantics
+
+The previous custom Syoboi title search expected nearly literal whole-series
+names, and some titles with season suffixes returned no results. This release
+uses a dedicated Java adaptation of NCOverlay's nco-utils search preparation:
+
+- Parse normalized TVer series + episode into base title, season, episode
+  number, and subtitle, with explicit refusal to guess multi-episode ranges
+- Build the primary TitleSearch query from the stripped series name by
+  removing punctuation/symbols and uppercasing, as NCOverlay does
+- Screen results by normalized title similarity (>= 0.85 when episode number
+  exists) or conservative partial match, and reject conflicting seasons
+- Resolve missing episode numbers against the Syoboi SubTitles API
+- Read broadcast records via the same Syoboi db.php ProgLookup endpoint
+  (TID, Count, JOIN=SubTitles) that NCOverlay/nco-utils uses, retaining
+  a JSON ProgramByCount fallback when db.php cannot be parsed
+- Use subtitle comparison to disambiguate same-base series and avoid mixing
+  unrelated seasons, while accepting an otherwise exact title+episode number
+- Preserve multi-broadcast loading, original broadcast start timestamps,
+  saved manual overrides, and existing animation/overlay behavior
+
+A focused standalone Java test now checks Season4, explicit Japanese episodes,
+kanji episode numbers, no-episode subtitles, different arcs and multi-episode
+ranges. CI runs it with javac before building the .mpp.
+
+**Scope:** The match and query semantics are aligned with NCOverlay's nco-utils
+searcher, but this is not a byte-for-byte or exhaustive port of its complex
+anime-title parser. Uncommon title formats need additional regression tests.
+NCOverlay/nco-utils is MIT licensed; upstream attribution:
+https://github.com/Midra429/nco-utils/tree/main/src/search/services
+https://github.com/Midra429/nco-utils/tree/main/src/parse
