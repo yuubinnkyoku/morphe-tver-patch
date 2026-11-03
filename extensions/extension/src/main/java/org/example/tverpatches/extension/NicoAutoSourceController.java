@@ -35,6 +35,7 @@ final class NicoAutoSourceController {
     private static final String PREFS = "morphe.tver.settings";
     private static final String SOURCE_PREFIX = "nico_episode_source_";
     private static final String AUTO_GROUP_PREFIX = "nico_episode_auto_group_";
+    private static final String NICO_VIDEO_PREFIX = "nico_episode_nico_video_";
     private static final String PENDING_SOURCE = "nico_source_for_next_episode";
     private static final String TAG = "MorpheNicoOverlay";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
@@ -97,6 +98,109 @@ final class NicoAutoSourceController {
             .putString(AUTO_GROUP_PREFIX + key, array.toString())
             .remove(PENDING_SOURCE).apply();
         loadedSpec = "auto-group";
+    }
+
+
+    /** User-added NicoNico videos are independent from the broadcast source. */
+    private static List<String> nicoVideos(Context context) {
+        String key=preferenceKey();
+        if(key.isEmpty())return Collections.emptyList();
+        String raw=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
+            .getString(NICO_VIDEO_PREFIX+key,"");
+        if(raw.isEmpty())return Collections.emptyList();
+        List<String> videos=new ArrayList<>();
+        try {
+            JSONArray entries=new JSONArray(raw);
+            for(int i=0;i<entries.length()&&videos.size()<6;i++) {
+                String id=NicoVideoCommentSource.videoId(entries.optString(i,""));
+                if(!videos.contains(id))videos.add(id);
+            }
+        }catch(Exception ex){Log.w(TAG,"Invalid NicoNico video list",ex);}
+        return videos;
+    }
+
+    static int nicoVideoCount(Context context) {
+        return nicoVideos(context).size();
+    }
+
+    static boolean hasCommentSources(Context context) {
+        return !sourceForCurrent(context).isEmpty() || !nicoVideos(context).isEmpty();
+    }
+
+    private static void saveNicoVideos(Context context,List<String> ids) {
+        String key=preferenceKey();
+        if(key.isEmpty())return;
+        JSONArray data=new JSONArray();
+        for(String id:ids)data.put(id);
+        context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit()
+            .putString(NICO_VIDEO_PREFIX+key,data.toString()).apply();
+    }
+
+    private static List<String> combineSources(List<String> base,Context context) {
+        LinkedHashSet<String> combined=new LinkedHashSet<>(base);
+        for(String id:nicoVideos(context))combined.add("nico:"+id);
+        return new ArrayList<>(combined);
+    }
+
+    private static void reloadAllSources(Context context,boolean notify) {
+        List<String> base=new ArrayList<>(autoGroupForCurrent(context));
+        if(base.isEmpty()) {
+            String source=sourceForCurrent(context);
+            if(!source.isEmpty())base.add(source);
+        }
+        List<String> sources=combineSources(base,context);
+        if(sources.isEmpty())NicoOverlayBridge.clearEpisodeComments();
+        else NicoOverlayBridge.openEpisodeCommentSources(context,sources,notify);
+    }
+
+    static void showNicoVideoEditor(Activity activity) {
+        if(activity==null||activity.isFinishing()||activity.isDestroyed())return;
+        if(episodeKey.isEmpty()) {
+            Toast.makeText(activity,"動画を開いてから追加してください",Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final String keyAtOpen=episodeKey;
+        List<String> saved=nicoVideos(activity);
+        EditText text=new EditText(activity);
+        text.setSingleLine(true);
+        text.setHint("sm9 または https://www.nicovideo.jp/watch/sm9");
+        LinearLayout container=new LinearLayout(activity);
+        container.setOrientation(LinearLayout.VERTICAL);
+        int pad=(int)(16*activity.getResources().getDisplayMetrics().density);
+        container.setPadding(pad,pad/2,pad,pad/2);
+        TextView explanation=new TextView(activity);
+        explanation.setText("ニコニコ動画のコメントを実況コメントと重ねます。"
+            +"動画IDを追加すると次回も保存されます。"
+            +"\\n追加済み: "+(saved.isEmpty()?"なし":android.text.TextUtils.join(", ",saved))
+            +"\\n無料で取得できる公開動画が対象です（最大6動画）。");
+        container.addView(explanation);
+        container.addView(text);
+        new AlertDialog.Builder(activity)
+            .setTitle("ニコニコ動画のコメントを追加")
+            .setView(container)
+            .setPositiveButton("追加して読込",(dialog,which)->{
+                if(!keyAtOpen.equals(episodeKey))return;
+                try {
+                    String id=NicoVideoCommentSource.videoId(
+                        text.getText().toString().trim());
+                    List<String> current=new ArrayList<>(nicoVideos(activity));
+                    if(!current.contains(id)) {
+                        if(current.size()>=6)
+                            throw new IllegalArgumentException("動画は最大6件です");
+                        current.add(id);
+                    }
+                    saveNicoVideos(activity,current);
+                    reloadAllSources(activity,true);
+                }catch(IllegalArgumentException error) {
+                    Toast.makeText(activity,error.getMessage(),Toast.LENGTH_LONG).show();
+                }
+            })
+            .setNeutralButton("追加動画をすべて解除",(dialog,which)->{
+                if(!keyAtOpen.equals(episodeKey))return;
+                saveNicoVideos(activity,Collections.emptyList());
+                reloadAllSources(activity,true);
+            })
+            .setNegativeButton("戻る",null).show();
     }
 
     static String sourceForCurrent(Context context) {
@@ -171,7 +275,8 @@ final class NicoAutoSourceController {
             if (!savedGroup.isEmpty()) {
                 loadedSpec = "auto-group";
                 searchStatus = "saved-auto-group";
-                NicoOverlayBridge.openEpisodeCommentSources(context,savedGroup,false);
+                NicoOverlayBridge.openEpisodeCommentSources(
+                    context,combineSources(savedGroup,context),false);
                 return;
             }
             String saved = sourceForCurrent(context);
@@ -187,11 +292,18 @@ final class NicoAutoSourceController {
             if (!saved.isEmpty()) {
                 loadedSpec = saved;
                 searchStatus = "saved-source";
-                NicoOverlayBridge.openEpisodeCommentSource(context,saved,false);
+                NicoOverlayBridge.openEpisodeCommentSources(context,
+                    combineSources(Collections.singletonList(saved),context),false);
             } else if (context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
                 .getBoolean(AUTO_ENABLED,true)) {
+                List<String> videos=combineSources(Collections.emptyList(),context);
+                if(!videos.isEmpty())
+                    NicoOverlayBridge.openEpisodeCommentSources(context,videos,false);
                 search(context,false);
             } else {
+                List<String> videos=combineSources(Collections.emptyList(),context);
+                if(!videos.isEmpty())
+                    NicoOverlayBridge.openEpisodeCommentSources(context,videos,false);
                 searchStatus = "disabled";
             }
         } catch (ReflectiveOperationException | RuntimeException error) {
@@ -264,7 +376,7 @@ final class NicoAutoSourceController {
                             specifications.add(item.specification(0));
                         setAutoGroup(context,specifications);
                         NicoOverlayBridge.openEpisodeCommentSources(
-                            context,specifications,false);
+                            context,combineSources(specifications,context),false);
                         searchStatus = "auto-selected";
                         Log.i(TAG,"Auto loading " + specifications.size()
                             + " broadcasts for " + series + " / " + subtitle);
@@ -283,7 +395,7 @@ final class NicoAutoSourceController {
     private static void select(Context context, TverEpgSearch.Candidate chosen) {
         String spec = chosen.specification(0);
         setManual(context,spec);
-        NicoOverlayBridge.openEpisodeCommentSource(context,spec,true);
+        reloadAllSources(context,true);
         searchStatus = "selected";
     }
 
@@ -313,21 +425,23 @@ final class NicoAutoSourceController {
         final String keyAtOpen = episodeKey;
         String current = sourceForCurrent(activity);
         List<TverEpgSearch.Candidate> options = new ArrayList<>(candidates);
-        String[] labels = new String[options.size() + 2];
+        String[] labels = new String[options.size() + 3];
         List<String> group = autoGroupForCurrent(activity);
         labels[0] = "現在のコメントを調整 / 解除\n"
             + (group.isEmpty() ? (current.isEmpty() ? "未選択" : current)
                 : group.size() + "放送分を重ね合わせ")
             + "　（"+searchStatus+"）";
         labels[1] = "放送局・放送日時を手動で指定";
-        for (int i=0;i<options.size();i++) labels[i+2]=options.get(i).label();
+        labels[2] = "ニコニコ動画のコメントを追加・管理（"+nicoVideoCount(activity)+"件）";
+        for (int i=0;i<options.size();i++) labels[i+3]=options.get(i).label();
         new AlertDialog.Builder(activity)
             .setTitle("💬 "+program+" / "+episode)
             .setItems(labels,(dialog,which)->{
                 if (!keyAtOpen.equals(episodeKey)) return;
                 if (which==0) showSourceControls(activity);
                 else if (which==1) showManualSourceEditor(activity);
-                else select(activity,options.get(which-2));
+                else if (which==2) showNicoVideoEditor(activity);
+                else select(activity,options.get(which-3));
             })
             .setPositiveButton("地デジ・履歴検索",(d,w)->search(activity,false))
             .setNeutralButton("BS検索",(d,w)->search(activity,true))
@@ -362,7 +476,7 @@ final class NicoAutoSourceController {
                 try {
                     JikkyoCommentSource.validate(spec);
                     setManual(activity, spec);
-                    NicoOverlayBridge.openEpisodeCommentSource(activity, spec, true);
+                    reloadAllSources(activity,true);
                     searchStatus = "manual-source";
                 } catch (IllegalArgumentException ex) {
                     Toast.makeText(activity, "指定形式を確認してください: " + ex.getMessage(),
@@ -417,7 +531,7 @@ final class NicoAutoSourceController {
                     String spec = parts[0]+"|"+parts[1]+"|"+parts[2]+"|"+seconds;
                     if (group.isEmpty()) {
                         setManual(activity,spec);
-                        NicoOverlayBridge.openEpisodeCommentSource(activity,spec,true);
+                        reloadAllSources(activity,true);
                     } else {
                         List<String> changed = new ArrayList<>();
                         for (String item : group) {
@@ -425,7 +539,7 @@ final class NicoAutoSourceController {
                             changed.add(f[0]+"|"+f[1]+"|"+f[2]+"|"+seconds);
                         }
                         setAutoGroup(activity,changed);
-                        NicoOverlayBridge.openEpisodeCommentSources(activity,changed,true);
+                        reloadAllSources(activity,true);
                     }
                 } catch(NumberFormatException error) {
                     Toast.makeText(activity,"補正は±3600秒以内です",
@@ -435,7 +549,7 @@ final class NicoAutoSourceController {
             .setNeutralButton("コメントを解除",(d,w)->{
                 if (!keyAtOpen.equals(episodeKey)) return;
                 setManual(activity,"");
-                NicoOverlayBridge.clearEpisodeComments();
+                reloadAllSources(activity,false);
                 searchStatus = "cleared";
             })
             .setNegativeButton("戻る",null)

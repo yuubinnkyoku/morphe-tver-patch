@@ -247,3 +247,30 @@ anime-title parser. Uncommon title formats need additional regression tests.
 NCOverlay/nco-utils is MIT licensed; upstream attribution:
 https://github.com/Midra429/nco-utils/tree/main/src/search/services
 https://github.com/Midra429/nco-utils/tree/main/src/parse
+
+
+## 2026-11-03: mixed NicoNico video + Jikkyo comment sources
+
+The previous archive-group loader already combined multiple Jikkyo broadcast
+archives in one video-relative timeline. A new NicoVideoCommentSource
+adds **manual** NicoNico video comment fetching by video ID or URL through
+the public watch-v4 and nvComment-v1 APIs, matching NCOverlay's retrieval
+sequence. The comment panel and source picker can add up to six NicoNico
+videos per TVer episode independently from the saved Jikkyo source.
+NicoNico comments and Jikkyo archive comments are then batched into the
+same existing transparent WebView renderer, capped at 30,000 comments total.
+
+The user-added NicoNico IDs are saved under an independent episode-specific
+preference key. Changing the broadcast source, clearing it, or loading a
+saved auto-search group does not remove these IDs; the combined loader
+rebuilds the merged timeline when either set changes. URL/ID validation
+restricts values to canonical NicoNico watch IDs, and the comment server
+must have a verified *.nvcomment.nicovideo.jp HTTPS hostname.
+Only display fields (comment text, timing, commands) reach the WebView.
+There is no login cookie extraction or session sharing. Paid/member-only
+videos can fail to load, and errors are logged rather than silently
+dropping every other source.
+
+This is a first step toward NCOverlay parity. Automatic official/d-anime/
+SZBH search and per-source visibility/offsets are not yet provided.
+Renderer frame scheduling and fullscreen behavior have not changed.

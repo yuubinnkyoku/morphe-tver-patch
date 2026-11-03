@@ -151,7 +151,8 @@ public final class NicoOverlayBridge {
     static void openEpisodeCommentSources(Context context, List<String> specifications,
                                           boolean notify) {
         if (specifications == null || specifications.isEmpty()) return;
-        if (specifications.size() == 1) {
+        if (specifications.size() == 1
+            && !specifications.get(0).startsWith("nico:")) {
             loadJikkyoSource(context,specifications.get(0),notify);
             return;
         }
@@ -983,8 +984,9 @@ public final class NicoOverlayBridge {
             for (String spec : input) {
                 if (total >= 30000 || succeeded + failed >= 32) break;
                 try {
-                    JikkyoCommentSource.Result part =
-                        JikkyoCommentSource.fetch(spec,30000-total);
+                    JikkyoCommentSource.Result part = spec.startsWith("nico:")
+                        ? NicoVideoCommentSource.fetch(spec,30000-total)
+                        : JikkyoCommentSource.fetch(spec,30000-total);
                     combined.addAll(part.batches);
                     total += part.count;
                     succeeded++;
@@ -1186,8 +1188,10 @@ public final class NicoOverlayBridge {
 
         TextView source = new TextView(activity);
         source.setText(NicoAutoSourceController.badgeLabel(commentSourceCount)
-            + (NicoAutoSourceController.sourceForCurrent(activity).isEmpty()
-                ? "  ・  未選択" : "  ・  選択済み"));
+            + (NicoAutoSourceController.hasCommentSources(activity)
+                ? "  ・  選択済み（ニコニコ動画 "
+                    + NicoAutoSourceController.nicoVideoCount(activity) + "件）"
+                : "  ・  未選択"));
         source.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         content.addView(source);
 
@@ -1202,6 +1206,10 @@ public final class NicoOverlayBridge {
         choose.setAllCaps(false);
         choose.setText("実況コメントを探す・選ぶ");
         content.addView(choose);
+        Button nicoVideo = new Button(activity);
+        nicoVideo.setAllCaps(false);
+        nicoVideo.setText("ニコニコ動画のコメントを追加・管理");
+        content.addView(nicoVideo);
         Button adjust = new Button(activity);
         adjust.setAllCaps(false);
         adjust.setText("コメントの時刻を補正");
@@ -1216,6 +1224,10 @@ public final class NicoOverlayBridge {
         choose.setOnClickListener(v -> {
             dialog.dismiss();
             NicoAutoSourceController.showPicker(activity);
+        });
+        nicoVideo.setOnClickListener(v -> {
+            dialog.dismiss();
+            NicoAutoSourceController.showNicoVideoEditor(activity);
         });
         adjust.setOnClickListener(v -> {
             dialog.dismiss();
