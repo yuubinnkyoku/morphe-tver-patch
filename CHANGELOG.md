@@ -1,3 +1,10 @@
+## [1.2.0-dev.16](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.15...v1.2.0-dev.16) (2026-11-03)
+
+### 🐛 Bug Fixes
+
+* position decor-level Nico overlay over player during fullscreen resizing ([f8be430](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/f8be4305ec26812a17e72c0bd6b27f25c94ae8a5))
+* retain Nico WebView in decor overlay across fullscreen Compose handoff ([3322754](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3322754459890618bd6fbf133899250dffde7352))
+
 ## [1.2.0-dev.15](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.14...v1.2.0-dev.15) (2026-11-02)
 
 ### 🐛 Bug Fixes
