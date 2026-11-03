@@ -139,3 +139,20 @@ multi-source searching, anime episode matching via Syoboi Calendar,
 comment posting, or niconicomments-compatible comment art. Title extraction,
 TVer EPG API compatibility, match ranking, actual display and timing must be
 validated on the TVer 7.2.1 device; a successful CI build is not a user test.
+
+## 2026-11-03: NCOverlay-inspired quick controls (experimental)
+
+Tap the floating "💬 コメント" button to open an Android quick panel with
+show/hide, opacity (10–100%), font size (50–150%), scrolling speed (50–150%)
+and comment amount (25–100%). The four style controls default to 100% and
+persist between episodes. This panel also opens the existing archive source
+picker and per-episode offset adjustment. A shortcut is available in Morphe
+settings as well.
+
+The existing Canvas renderer is reused. Changing opacity has no layout cost;
+font size, speed and amount rebuild the comment lanes only when the slider is
+released, not on each animation frame. The default style preserves the earlier
+60fps behavior. Android on-device testing is still required for these controls.
+
+NCOverlay's full search options, NG filters, multi-source slots and comment
+art are not yet implemented.

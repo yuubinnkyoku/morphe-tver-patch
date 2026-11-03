@@ -18,7 +18,7 @@ let lines = [];
 const canvasContext = {
     measureText: text => ({ width: text.length * 24 }),
     clearRect() {},
-    strokeText(text, x, y) { lines.push({ text, x, y }); },
+    strokeText(text, x, y) { lines.push({ text, x, y, alpha: this.globalAlpha, font: this.font }); },
     fillText() {},
 };
 const window = {};
@@ -31,6 +31,7 @@ const sandbox = {
 runInNewContext(script, sandbox, { timeout: 1000 });
 assert.equal(typeof window.MorpheNico.update, "function");
 assert.equal(typeof window.MorpheNico.setVisible, "function");
+assert.equal(typeof window.MorpheNico.setStyle, "function");
 assert.equal(typeof window.MorpheNico.beginImport, "function");
 assert.equal(typeof window.MorpheNico.appendComments, "function");
 assert.equal(typeof window.MorpheNico.endImport, "function");
@@ -109,6 +110,13 @@ window.MorpheNico.endImport();
 update(3000, true, 1, false, false, 3);
 assert.ok(draw("実際のコメント") !== null, "imported comment should render");
 assert.equal(draw(marker), null, "demo should not mix with actual imported comments");
+window.MorpheNico.setStyle(50, 150, 100, 100);
+draw("実際のコメント");
+const styled = lines.find(l => l.text === "実際のコメント");
+assert.ok(styled, "styled comments should remain visible");
+assert.equal(styled.alpha, 0.5, "opacity should apply to Canvas text");
+assert.equal(styled.font, "bold 72px sans-serif", "font scale should apply");
+window.MorpheNico.setStyle(100, 100, 100, 100);
 
 // Heavy bursts must not visually overlap hundreds of comments in one lane.
 window.MorpheNico.beginImport();

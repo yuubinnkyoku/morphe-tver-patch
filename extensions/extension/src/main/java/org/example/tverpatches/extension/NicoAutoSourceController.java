@@ -285,6 +285,10 @@ final class NicoAutoSourceController {
             .show();
     }
 
+    static void showCurrentSourceControls(Activity activity) {
+        showSourceControls(activity);
+    }
+
     private static void showSourceControls(Activity activity) {
         String current = sourceForCurrent(activity);
         if (current.isEmpty()) {

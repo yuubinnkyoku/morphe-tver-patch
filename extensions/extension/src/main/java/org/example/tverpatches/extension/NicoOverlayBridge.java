@@ -26,6 +26,8 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
+import android.widget.Button;
+import android.widget.SeekBar;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -61,6 +63,10 @@ public final class NicoOverlayBridge {
     private static final String SAVED_FPS_REPORT = "nico_fps_last_report";
     private static final String JIKKYO_SOURCE = "nico_jikkyo_source";
     private static final String SHOW_DEMO = "nico_show_demo";
+    private static final String STYLE_OPACITY = "nico_style_opacity";
+    private static final String STYLE_SCALE = "nico_style_scale";
+    private static final String STYLE_SPEED = "nico_style_speed";
+    private static final String STYLE_AMOUNT = "nico_style_amount";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static WeakReference<ViewGroup> hostRef = new WeakReference<>(null);
     private static WeakReference<PassThroughWebView> webRef = new WeakReference<>(null);
@@ -405,7 +411,7 @@ public final class NicoOverlayBridge {
         label.setOnClickListener(v -> {
             Log.i(TAG, "Comment source button clicked");
             Activity activity = findActivity(host.getContext());
-            if (activity != null) NicoAutoSourceController.showPicker(activity);
+            if (activity != null) showQuickPanel(activity);
             else Log.w(TAG, "Cannot open comment source picker: Activity not found");
         });
         return label;
@@ -600,6 +606,14 @@ public final class NicoOverlayBridge {
                 web.evaluateJavascript(
                     "window.MorpheNico&&window.MorpheNico.setVisible(" +
                     (showComments ? "true" : "false") + ");", null);
+                android.content.SharedPreferences prefs = host.getContext()
+                    .getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+                web.evaluateJavascript(String.format(Locale.ROOT,
+                    "window.MorpheNico&&window.MorpheNico.setStyle(%d,%d,%d,%d);",
+                    prefs.getInt(STYLE_OPACITY, 100),
+                    prefs.getInt(STYLE_SCALE, 100),
+                    prefs.getInt(STYLE_SPEED, 100),
+                    prefs.getInt(STYLE_AMOUNT, 100)), null);
             }
         }
         updateFpsBadge();
@@ -1078,6 +1092,101 @@ public final class NicoOverlayBridge {
             .show();
     }
 
+
+    /** NCOverlay-inspired quick controls that do not touch the video Surface. */
+    public static void showQuickPanel(Activity activity) {
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
+        LinearLayout content = new LinearLayout(activity);
+        content.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(content, 18);
+        content.setPadding(pad, dp(content, 8), pad, dp(content, 8));
+
+        TextView title = new TextView(activity);
+        String series = NicoAutoSourceController.seriesName();
+        String episode = NicoAutoSourceController.episodeName();
+        title.setText(series.isEmpty() ? "番組情報を取得中" :
+            series + (episode.isEmpty() ? "" : " / " + episode));
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        title.setMaxLines(2);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        content.addView(title);
+
+        TextView source = new TextView(activity);
+        source.setText(NicoAutoSourceController.badgeLabel(commentSourceCount)
+            + (NicoAutoSourceController.sourceForCurrent(activity).isEmpty()
+                ? "  ・  未選択" : "  ・  選択済み"));
+        source.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        content.addView(source);
+
+        content.addView(makeSettingSwitch(activity, "コメントを表示",
+            COMMENTS_VISIBLE, true));
+        addQuickSlider(activity, content, "不透明度", STYLE_OPACITY, 10, 100, 10);
+        addQuickSlider(activity, content, "文字の大きさ", STYLE_SCALE, 50, 150, 10);
+        addQuickSlider(activity, content, "流れる速さ", STYLE_SPEED, 50, 150, 10);
+        addQuickSlider(activity, content, "表示量", STYLE_AMOUNT, 25, 100, 25);
+
+        Button choose = new Button(activity);
+        choose.setAllCaps(false);
+        choose.setText("実況コメントを探す・選ぶ");
+        content.addView(choose);
+        Button adjust = new Button(activity);
+        adjust.setAllCaps(false);
+        adjust.setText("コメントの時刻を補正");
+        content.addView(adjust);
+
+        ScrollView scroll = new ScrollView(activity);
+        scroll.addView(content);
+        AlertDialog dialog = new AlertDialog.Builder(activity)
+            .setTitle("💬 コメント操作").setView(scroll)
+            .setPositiveButton("閉じる", null)
+            .setNeutralButton("表示設定を初期化", null).create();
+        choose.setOnClickListener(v -> {
+            dialog.dismiss();
+            NicoAutoSourceController.showPicker(activity);
+        });
+        adjust.setOnClickListener(v -> {
+            dialog.dismiss();
+            NicoAutoSourceController.showCurrentSourceControls(activity);
+        });
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+            activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putInt(STYLE_OPACITY, 100).putInt(STYLE_SCALE, 100)
+                .putInt(STYLE_SPEED, 100).putInt(STYLE_AMOUNT, 100).apply();
+            applyOverlayPreferences();
+            dialog.dismiss();
+            showQuickPanel(activity);
+        });
+    }
+
+    private static void addQuickSlider(Activity activity, LinearLayout parent,
+                                       String labelText, String key,
+                                       int min, int max, int step) {
+        android.content.SharedPreferences prefs =
+            activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        int current = Math.max(min, Math.min(max, prefs.getInt(key, 100)));
+        TextView label = new TextView(activity);
+        label.setText(labelText + "  " + current + "%");
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        label.setPadding(0, dp(parent, 5), 0, 0);
+        parent.addView(label);
+        SeekBar bar = new SeekBar(activity);
+        bar.setMax((max - min) / step);
+        bar.setProgress(Math.round((current - min) / (float)step));
+        parent.addView(bar);
+        bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar slider, int value, boolean user) {
+                label.setText(labelText + "  " + (min + value * step) + "%");
+            }
+            @Override public void onStartTrackingTouch(SeekBar slider) {}
+            @Override public void onStopTrackingTouch(SeekBar slider) {
+                // Re-layout once after dragging; never on each video frame.
+                prefs.edit().putInt(key, min + slider.getProgress() * step).apply();
+                applyOverlayPreferences();
+            }
+        });
+    }
+
     /**
      * Extend the PiP patch's Morphe settings panel before it is attached to
      * the AlertDialog. Scrolling keeps existing settings usable on phones.
@@ -1093,6 +1202,11 @@ public final class NicoOverlayBridge {
 
         panel.addView(makeSettingSwitch(activity, "コメント表示を有効にする",
             COMMENTS_VISIBLE, true));
+        Button quickButton = new Button(activity);
+        quickButton.setAllCaps(false);
+        quickButton.setText("コメントのクイック操作・表示調整");
+        quickButton.setOnClickListener(v -> showQuickPanel(activity));
+        panel.addView(quickButton);
         panel.addView(makeSettingSwitch(activity, "デモコメントを表示（通常はOFF）",
             SHOW_DEMO, false));
         panel.addView(makeSettingSwitch(activity,
@@ -1306,8 +1420,9 @@ public final class NicoOverlayBridge {
                 {vposMs:9200,body:'特殊コメントは次の段階で対応',commands:['small','green']},
                 {vposMs:12500,body:'改行テスト'+String.fromCharCode(10)+'２行目',commands:['big']}
             ];
-            let comments=[],importBuffer=[],demoPrepared=[],demoMode=false;
+            let comments=[],rawComments=[],importBuffer=[],demoPrepared=[],demoMode=false;
             let commentsEnabled=true;
+            let style={opacity:100,scale:100,speed:100,amount:100};
             let clock={ms:0,stamp:performance.now(),playing:false,rate:1,ad:false,seeking:false};
             let lastReportedMs=null,lastSeekGeneration=null;
 
@@ -1346,18 +1461,35 @@ public final class NicoOverlayBridge {
             }
             function setVisible(enabled){commentsEnabled=!!enabled;}
             function setDemoMode(enabled){demoMode=!!enabled;}
+            function setStyle(opacity,scale,speed,amount){
+                const clamp=(v,min,max)=>Math.max(min,Math.min(max,Math.round(Number(v))));
+                const next={opacity:clamp(opacity,0,100),scale:clamp(scale,50,150),
+                    speed:clamp(speed,50,150),amount:clamp(amount,25,100)};
+                if(!Object.values(next).every(Number.isFinite))return;
+                const needLayout=next.scale!==style.scale||next.speed!==style.speed||
+                    next.amount!==style.amount;
+                style=next;
+                if(needLayout){
+                    demoPrepared=prepare(demo);
+                    comments=prepare(rawComments);
+                }
+            }
 
             // Precompute text metrics and non-overlapping lanes ONCE per
             // imported timeline, rather than measureText() on every frame.
             // Skip unplaceable comments instead of piling them on each other.
             function prepare(input){
                 const result=[];
-                for(const c of input){
+                for(let i=0;i<input.length;i++){
+                    const c=input[i];
                     if(!c||!Number.isFinite(Number(c.vposMs)))continue;
+                    if(style.amount<100 &&
+                        ((i*37+Math.floor(Number(c.vposMs)))%100)>=style.amount)continue;
                     const body=String(c.body??'').slice(0,400);
                     if(!body)continue;
                     const commands=Array.isArray(c.commands)?c.commands.map(String):[];
-                    const size=commands.includes('big')?64:commands.includes('small')?30:48;
+                    const baseSize=commands.includes('big')?64:commands.includes('small')?30:48;
+                    const size=Math.round(baseSize*style.scale/100);
                     const lines=body.split(String.fromCharCode(10)).slice(0,10);
                     ctx.font='bold '+size+'px sans-serif';
                     const width=Math.max(1,...lines.map(line=>ctx.measureText(line).width));
@@ -1369,10 +1501,12 @@ public final class NicoOverlayBridge {
                     }
                     result.push({vposMs:Number(c.vposMs),lines,size,width,height,color,
                         type:commands.includes('ue')?'top':commands.includes('shita')?'bottom':'scroll',
-                        lane:-1,velocity:(W+width)/scrollMs});
+                        lane:-1,velocity:(W+width)/(scrollMs*100/style.speed)});
                 }
                 result.sort((a,b)=>a.vposMs-b.vposMs);
-                const scrollLanes=Array(14).fill(null);
+                const step=Math.max(72,Math.round(72*style.scale/100));
+                const scrollLanes=Array(Math.max(1,
+                    Math.min(14,Math.floor((H-60)/step)))).fill(null);
                 const topUntil=Array(4).fill(-Infinity),bottomUntil=Array(4).fill(-Infinity);
                 for(const c of result){
                     if(c.type!=='scroll'){
@@ -1393,7 +1527,7 @@ public final class NicoOverlayBridge {
                         // up before the previous comment leaves on the left.
                         const earliest=!previous?-Infinity:previous.vposMs+Math.max(
                             (previous.width+50)/previous.velocity,
-                            scrollMs-(W-50)/c.velocity
+                            scrollMs*100/style.speed-(W-50)/c.velocity
                         );
                         if(c.vposMs>=earliest){
                             c.lane=lane;
@@ -1412,17 +1546,19 @@ public final class NicoOverlayBridge {
                         for(const c of (thread?.comments||[]))flattened.push(c);
                     }
                 }
-                comments=prepare(flattened);
+                rawComments=flattened;
+                comments=prepare(rawComments);
                 demoMode=false;
             }
-            function beginImport(){importBuffer=[];comments=[];demoMode=false;}
+            function beginImport(){importBuffer=[];rawComments=[];comments=[];demoMode=false;}
             function appendComments(batch){
                 if(Array.isArray(batch)&&importBuffer.length<30000){
                     for(const c of batch.slice(0,30000-importBuffer.length))importBuffer.push(c);
                 }
             }
             function endImport(){
-                comments=prepare(importBuffer);
+                rawComments=importBuffer;
+                comments=prepare(rawComments);
                 importBuffer=[];
             }
             function lowerBound(a,time){
@@ -1435,12 +1571,13 @@ public final class NicoOverlayBridge {
                 return l;
             }
             function paint(comment,age){
-                const duration=comment.type==='scroll'?scrollMs:fixedMs;
+                const duration=comment.type==='scroll'?scrollMs*100/style.speed:fixedMs;
                 if(age<0||age>=duration)return false;
                 const {size,lines,width,height,lane,type}=comment;
                 const x=type==='scroll'?W-age*comment.velocity:(W-width)/2;
                 const y=type==='top'?20+lane*190:
-                    type==='bottom'?H-20-height-lane*190:35+lane*72;
+                    type==='bottom'?H-20-height-lane*190:
+                    35+lane*Math.max(72,Math.round(72*style.scale/100));
                 ctx.font='bold '+size+'px sans-serif';
                 ctx.textBaseline='top';
                 ctx.lineJoin='round';
@@ -1510,10 +1647,11 @@ public final class NicoOverlayBridge {
                 let drawn=0;
                 ctx.clearRect(0,0,W,H);
                 if(commentsEnabled&&!clock.ad&&!clock.seeking){
+                    ctx.globalAlpha=style.opacity/100;
                     const ms=interpolatedMs(frameStart);
                     const active=demoMode?demoPrepared:comments;
                     const timeline=demoMode?ms%16000:ms;
-                    const from=lowerBound(active,timeline-scrollMs);
+                    const from=lowerBound(active,timeline-Math.max(scrollMs*100/style.speed,fixedMs));
                     for(let i=from;i<active.length;i++){
                         const c=active[i],age=timeline-c.vposMs;
                         if(age<0)break;
@@ -1526,10 +1664,11 @@ public final class NicoOverlayBridge {
                         ctx.fillText('Morphe Nico Overlay — TEST MODE',18,H-34);
                     }
                 }
+                ctx.globalAlpha=1;
                 recordPerf(frameStart,performance.now()-frameStart,drawn);
                 requestAnimationFrame(frame);
             }
-            window.MorpheNico={update,setThreads,setVisible,setDemoMode,
+            window.MorpheNico={update,setThreads,setVisible,setDemoMode,setStyle,
                 beginImport,appendComments,endImport};
             requestAnimationFrame(frame);
         })();
