@@ -145,17 +145,12 @@ public final class NicoOverlayBridge {
     }
 
     static void openEpisodeCommentSource(Context context, String spec, boolean notify) {
-        loadJikkyoSource(context, spec, notify);
+        loadJikkyoSources(context,java.util.Collections.singletonList(spec),notify);
     }
 
     static void openEpisodeCommentSources(Context context, List<String> specifications,
                                           boolean notify) {
         if (specifications == null || specifications.isEmpty()) return;
-        if (specifications.size() == 1
-            && !specifications.get(0).startsWith("nico:")) {
-            loadJikkyoSource(context,specifications.get(0),notify);
-            return;
-        }
         loadJikkyoSources(context,specifications,notify);
     }
 
@@ -964,6 +959,37 @@ public final class NicoOverlayBridge {
      * per-source failures without discarding successful archives. Memory and
      * WebView import are bounded across all broadcasts.
      */
+
+    /** Apply each source's independently saved offset after its native
+     * comments have been read, without changing other sources' timelines.
+     */
+    private static JikkyoCommentSource.Result shiftComments(
+            JikkyoCommentSource.Result original,int seconds) throws Exception {
+        if(seconds==0)return original;
+        long shift=seconds*1000L;
+        List<String> batches=new ArrayList<>();
+        org.json.JSONArray pending=new org.json.JSONArray();
+        int count=0;
+        for(String raw:original.batches) {
+            org.json.JSONArray input=new org.json.JSONArray(raw);
+            for(int i=0;i<input.length();i++) {
+                org.json.JSONObject comment=input.optJSONObject(i);
+                if(comment==null)continue;
+                long newTime=comment.optLong("vposMs",-1)+shift;
+                if(newTime<0||newTime>24L*60*60*1000)continue;
+                comment.put("vposMs",newTime);
+                pending.put(comment);
+                count++;
+                if(pending.length()>=250) {
+                    batches.add(pending.toString());
+                    pending=new org.json.JSONArray();
+                }
+            }
+        }
+        if(pending.length()>0)batches.add(pending.toString());
+        return new JikkyoCommentSource.Result(batches,count);
+    }
+
     private static void loadJikkyoSources(Context context, List<String> specifications,
                                           boolean showToast) {
         PassThroughWebView web = webRef.get();
@@ -975,8 +1001,13 @@ public final class NicoOverlayBridge {
         commentSourceStatus = "loading";
         commentSourceError = "";
         commentSourceCount = 0;
-        final List<String> input = new ArrayList<>(
-            new java.util.LinkedHashSet<>(specifications));
+        final List<String> input = new ArrayList<>();
+        final java.util.Map<String,Integer> perSourceOffsets = new java.util.HashMap<>();
+        for (String spec : new java.util.LinkedHashSet<>(specifications)) {
+            if (!NicoSourceSettings.enabled(context,spec)) continue;
+            input.add(spec);
+            perSourceOffsets.put(spec,NicoSourceSettings.offsetSeconds(context,spec));
+        }
         new Thread(() -> {
             List<String> combined = new ArrayList<>();
             int total = 0, succeeded = 0, failed = 0;
@@ -987,6 +1018,7 @@ public final class NicoOverlayBridge {
                     JikkyoCommentSource.Result part = spec.startsWith("nico:")
                         ? NicoVideoCommentSource.fetch(spec,30000-total)
                         : JikkyoCommentSource.fetch(spec,30000-total);
+                    part = shiftComments(part,perSourceOffsets.getOrDefault(spec,0));
                     combined.addAll(part.batches);
                     total += part.count;
                     succeeded++;
@@ -996,7 +1028,7 @@ public final class NicoOverlayBridge {
                         String message = error.getMessage();
                         firstFailure = message == null ? error.toString() : message;
                     }
-                    Log.w(TAG,"Failed to load one broadcast archive",error);
+                    Log.w(TAG,"Failed to load comment source: "+spec,error);
                 }
             }
             final int count = total, successes = succeeded, failures = failed;
@@ -1206,10 +1238,21 @@ public final class NicoOverlayBridge {
         choose.setAllCaps(false);
         choose.setText("実況コメントを探す・選ぶ");
         content.addView(choose);
+        content.addView(makeSettingSwitch(activity,
+            "ニコニコ動画を作品名・話数から自動検索",
+            NicoVideoSearchController.AUTO_ENABLED,true));
+        Button nicoSearch = new Button(activity);
+        nicoSearch.setAllCaps(false);
+        nicoSearch.setText("ニコニコ動画を検索して選ぶ");
+        content.addView(nicoSearch);
         Button nicoVideo = new Button(activity);
         nicoVideo.setAllCaps(false);
-        nicoVideo.setText("ニコニコ動画のコメントを追加・管理");
+        nicoVideo.setText("ニコニコ動画のIDを手動で追加");
         content.addView(nicoVideo);
+        Button sourceManager = new Button(activity);
+        sourceManager.setAllCaps(false);
+        sourceManager.setText("コメント元ごとの表示・時刻補正");
+        content.addView(sourceManager);
         Button adjust = new Button(activity);
         adjust.setAllCaps(false);
         adjust.setText("コメントの時刻を補正");
@@ -1225,9 +1268,17 @@ public final class NicoOverlayBridge {
             dialog.dismiss();
             NicoAutoSourceController.showPicker(activity);
         });
+        nicoSearch.setOnClickListener(v -> {
+            dialog.dismiss();
+            NicoVideoSearchController.showPicker(activity);
+        });
         nicoVideo.setOnClickListener(v -> {
             dialog.dismiss();
             NicoAutoSourceController.showNicoVideoEditor(activity);
+        });
+        sourceManager.setOnClickListener(v -> {
+            dialog.dismiss();
+            NicoSourceSettings.show(activity);
         });
         adjust.setOnClickListener(v -> {
             dialog.dismiss();
@@ -1297,6 +1348,9 @@ public final class NicoOverlayBridge {
         panel.addView(makeSettingSwitch(activity,
             "番組情報から実況コメントを自動検索（完全一致時のみ自動読込）",
             NicoAutoSourceController.AUTO_ENABLED, true));
+        panel.addView(makeSettingSwitch(activity,
+            "ニコニコ動画の公式・dアニメ配信を自動検索",
+            NicoVideoSearchController.AUTO_ENABLED, true));
         android.widget.Button selectSource = new android.widget.Button(activity);
         selectSource.setText("現在の番組の実況コメントを探す・選ぶ");
         selectSource.setAllCaps(false);

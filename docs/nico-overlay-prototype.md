@@ -274,3 +274,32 @@ dropping every other source.
 This is a first step toward NCOverlay parity. Automatic official/d-anime/
 SZBH search and per-source visibility/offsets are not yet provided.
 Renderer frame scheduling and fullscreen behavior have not changed.
+
+
+## 2026-11-03: automatic NicoNico search and per-source controls
+
+The NicoNico comment path now has NCOverlay/nco-utils-inspired Snapshot Search
+v2 discovery alongside the existing Syoboi/Jikkyo search. It searches
+single-episode variants and filters episode, season, subtitles, and provider
+categories (official / d-anime / SZBH) using a standalone Java matcher.
+
+Only one unambiguous matched official and/or one matched d-anime result per
+category can be added automatically. Non-official comment-only videos and
+ambiguous titles remain selectable through the search results dialog.
+Search and the video player remain asynchronous; no NicoNico app credentials
+or TVer cookies are read. Member-only NicoNico videos may still fail.
+
+A new per-source manager preserves visibility and relative ±3600-second
+offset independently for every Jikkyo broadcast and NicoNico video.
+Settings are keyed by series+episode+source identity, and survive adjusting
+the global Jikkyo offset. Hidden sources are not fetched or drawn; active
+sources are merged in one video-relative WebView timeline.
+
+Quick controls and the TVer settings expose an automatic NicoNico search
+toggle, search result chooser, manual video-ID entry, and per-source controls.
+Regression tests cover season confusion, episode 2 vs 12, actual subtitle
+differences, a different anime arc, and marathon broadcasts.
+
+This remains a focused Android port rather than exhaustive compatibility with
+the full NCOverlay parser and its separately managed NiconiComments slots.
+The TVer media duration is not yet obtained for snapshot result filtering.

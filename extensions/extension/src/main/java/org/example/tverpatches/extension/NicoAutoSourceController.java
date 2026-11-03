@@ -102,7 +102,7 @@ final class NicoAutoSourceController {
 
 
     /** User-added NicoNico videos are independent from the broadcast source. */
-    private static List<String> nicoVideos(Context context) {
+    static List<String> nicoVideos(Context context) {
         String key=preferenceKey();
         if(key.isEmpty())return Collections.emptyList();
         String raw=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
@@ -119,6 +119,33 @@ final class NicoAutoSourceController {
         return videos;
     }
 
+    static boolean addNicoVideo(Context context,String input,boolean reload) {
+        String id=NicoVideoCommentSource.videoId(input);
+        List<String> list=new ArrayList<>(nicoVideos(context));
+        if(list.contains(id)||list.size()>=6)return false;
+        list.add(id);
+        saveNicoVideos(context,list);
+        if(reload)reloadAllSources(context,true);
+        return true;
+    }
+
+    static void removeNicoVideo(Context context,String id) {
+        List<String> list=new ArrayList<>(nicoVideos(context));
+        if(list.remove(id)) {
+            saveNicoVideos(context,list);
+            reloadAllSources(context,true);
+        }
+    }
+
+    static List<String> currentSources(Context context) {
+        List<String> broadcast=new ArrayList<>(autoGroupForCurrent(context));
+        if(broadcast.isEmpty()) {
+            String source=sourceForCurrent(context);
+            if(!source.isEmpty())broadcast.add(source);
+        }
+        return combineSources(broadcast,context);
+    }
+
     static int nicoVideoCount(Context context) {
         return nicoVideos(context).size();
     }
@@ -127,7 +154,7 @@ final class NicoAutoSourceController {
         return !sourceForCurrent(context).isEmpty() || !nicoVideos(context).isEmpty();
     }
 
-    private static void saveNicoVideos(Context context,List<String> ids) {
+    static void saveNicoVideos(Context context,List<String> ids) {
         String key=preferenceKey();
         if(key.isEmpty())return;
         JSONArray data=new JSONArray();
@@ -142,7 +169,7 @@ final class NicoAutoSourceController {
         return new ArrayList<>(combined);
     }
 
-    private static void reloadAllSources(Context context,boolean notify) {
+    static void reloadAllSources(Context context,boolean notify) {
         List<String> base=new ArrayList<>(autoGroupForCurrent(context));
         if(base.isEmpty()) {
             String source=sourceForCurrent(context);
@@ -234,6 +261,7 @@ final class NicoAutoSourceController {
     }
 
     static void resetOnRelease() {
+        NicoVideoSearchController.reset();
         searchGeneration++;
         metaRef = new WeakReference<>(null);
         episodeKey = "";
@@ -271,6 +299,7 @@ final class NicoAutoSourceController {
             searchStatus = "identified";
             NicoOverlayBridge.clearEpisodeComments();
             Log.i(TAG,"TVer episode identified: "+program+" / "+episode);
+            NicoVideoSearchController.onEpisodeIdentified(context,program,episode);
             List<String> savedGroup = autoGroupForCurrent(context);
             if (!savedGroup.isEmpty()) {
                 loadedSpec = "auto-group";
@@ -425,23 +454,28 @@ final class NicoAutoSourceController {
         final String keyAtOpen = episodeKey;
         String current = sourceForCurrent(activity);
         List<TverEpgSearch.Candidate> options = new ArrayList<>(candidates);
-        String[] labels = new String[options.size() + 3];
+        String[] labels = new String[options.size() + 5];
         List<String> group = autoGroupForCurrent(activity);
         labels[0] = "現在のコメントを調整 / 解除\n"
             + (group.isEmpty() ? (current.isEmpty() ? "未選択" : current)
                 : group.size() + "放送分を重ね合わせ")
             + "　（"+searchStatus+"）";
         labels[1] = "放送局・放送日時を手動で指定";
-        labels[2] = "ニコニコ動画のコメントを追加・管理（"+nicoVideoCount(activity)+"件）";
-        for (int i=0;i<options.size();i++) labels[i+3]=options.get(i).label();
+        labels[2] = "コメント元ごとの表示・時刻補正";
+        labels[3] = "ニコニコ動画を作品名・話数から検索（候補"
+            + NicoVideoSearchController.candidateCount() + "件）";
+        labels[4] = "ニコニコ動画のID・URLを追加（"+nicoVideoCount(activity)+"件）";
+        for (int i=0;i<options.size();i++) labels[i+5]=options.get(i).label();
         new AlertDialog.Builder(activity)
             .setTitle("💬 "+program+" / "+episode)
             .setItems(labels,(dialog,which)->{
                 if (!keyAtOpen.equals(episodeKey)) return;
                 if (which==0) showSourceControls(activity);
                 else if (which==1) showManualSourceEditor(activity);
-                else if (which==2) showNicoVideoEditor(activity);
-                else select(activity,options.get(which-3));
+                else if (which==2) NicoSourceSettings.show(activity);
+                else if (which==3) NicoVideoSearchController.showPicker(activity);
+                else if (which==4) showNicoVideoEditor(activity);
+                else select(activity,options.get(which-5));
             })
             .setPositiveButton("地デジ・履歴検索",(d,w)->search(activity,false))
             .setNeutralButton("BS検索",(d,w)->search(activity,true))

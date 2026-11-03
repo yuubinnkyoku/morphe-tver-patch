@@ -45,6 +45,9 @@ jobs:
       - name: Regression test NCOverlay-style automatic search
         run: node scripts/test-nco-search.mjs
 
+      - name: Regression test NicoNico video episode matching
+        run: node scripts/test-nico-video-search.mjs
+
       # Semantic release runs its own Gradle build command.
       # Only dev and main branch will generate a release as specified by .releaserc
       - name: Release
