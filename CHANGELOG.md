@@ -1,3 +1,9 @@
+## [1.2.0-dev.25](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.24...v1.2.0-dev.25) (2026-11-05)
+
+### 🐛 Bug Fixes
+
+* **tver:** ensure Jikkyo and NicoNico sources both receive comment slots ([6291fe3](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/6291fe39ab905c53677636750909028e8d71a39b))
+
 ## [1.2.0-dev.24](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.23...v1.2.0-dev.24) (2026-11-03)
 
 ### ✨ New Features
