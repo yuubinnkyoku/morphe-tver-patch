@@ -1,3 +1,188 @@
+## [1.2.0-dev.25](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.24...v1.2.0-dev.25) (2026-11-05)
+
+### 🐛 Bug Fixes
+
+* **tver:** ensure Jikkyo and NicoNico sources both receive comment slots ([6291fe3](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/6291fe39ab905c53677636750909028e8d71a39b))
+
+## [1.2.0-dev.24](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.23...v1.2.0-dev.24) (2026-11-03)
+
+### ✨ New Features
+
+* **tver:** automatic NicoNico search and per-source comment controls ([40e4cc4](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/40e4cc4a7e69f98fe0a58cfcbecfc8dfe83ec708))
+
+## [1.2.0-dev.23](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.22...v1.2.0-dev.23) (2026-11-03)
+
+### 🐛 Bug Fixes
+
+* **tver:** retry Nico watch metadata and browser-compatible nvComment requests ([ddc3a69](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/ddc3a69268c4a2a512151a8dfb27651d8ff0ae26))
+
+## [1.2.0-dev.22](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.21...v1.2.0-dev.22) (2026-11-03)
+
+### ✨ New Features
+
+* **tver:** mix public NicoNico video comments with Jikkyo archives ([a6d1cc0](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/a6d1cc0651ff6d18d78690e3c02b6f6e9967eb44))
+
+## [1.2.0-dev.21](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.20...v1.2.0-dev.21) (2026-11-03)
+
+### ✨ New Features
+
+* **tver:** align Jikkyo archive title matching with NCOverlay nco-utils ([fed5cb4](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/fed5cb4a6fdd1a7ff54b769fb86cd9e453b791fe))
+
+## [1.2.0-dev.20](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.19...v1.2.0-dev.20) (2026-11-03)
+
+### 🐛 Bug Fixes
+
+* **tver:** retry historical title lookup with season-free search terms ([fc9f356](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/fc9f35606f768398c5b23e06180d9676e964e3b7))
+
+## [1.2.0-dev.19](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.18...v1.2.0-dev.19) (2026-11-03)
+
+### 🐛 Bug Fixes
+
+* **tver:** import ArrayList for multi-broadcast archive loader ([5cd97e3](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5cd97e337357ae20cd29b150cac67f2ec51f1360))
+
+### ✨ New Features
+
+* **tver:** load all verified Jikkyo reruns for current episode ([6584076](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/65840765f8762e7aed07d9b270bfe1c564b1f35d))
+
+## [1.2.0-dev.18](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.17...v1.2.0-dev.18) (2026-11-03)
+
+### ✨ New Features
+
+* **tver:** broaden automatic Jikkyo discovery using BS and Syobocal ([f32b228](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/f32b228489d720cf0b82aeeb2b5d3782ddbb2f16))
+
+## [1.2.0-dev.17](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.16...v1.2.0-dev.17) (2026-11-03)
+
+### ✨ New Features
+
+* **tver:** add NCOverlay-inspired comment quick panel ([cfc28b9](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/cfc28b9b3de4056d210dda2913021d09bb921945))
+
+## [1.2.0-dev.16](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.15...v1.2.0-dev.16) (2026-11-03)
+
+### 🐛 Bug Fixes
+
+* position decor-level Nico overlay over player during fullscreen resizing ([f8be430](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/f8be4305ec26812a17e72c0bd6b27f25c94ae8a5))
+* retain Nico WebView in decor overlay across fullscreen Compose handoff ([3322754](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3322754459890618bd6fbf133899250dffde7352))
+
+## [1.2.0-dev.15](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.14...v1.2.0-dev.15) (2026-11-02)
+
+### 🐛 Bug Fixes
+
+* expose actual Nico Jikkyo archive errors in dialog and FPS diagnostics ([e82ba0e](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/e82ba0e6b25ebbf9d1cfb71f6436920a2bca34c4))
+* reject TVer EPG marathon false matches and future broadcast archives ([84218f5](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/84218f56cfe1eed64347596f3e971731f8a0607c))
+* report future and not-yet-archived broadcasts before requesting Jikkyo logs ([41611b1](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/41611b112ffd3d2a754f4715efc2cb0834b30fb0))
+* safely display Nico archive error when Activity is not available ([e97ff75](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/e97ff750a9923f9f923765afee0ae8afeb4c851f))
+
+### ✨ New Features
+
+* enter historical Jikkyo broadcast dates directly from episode comment picker ([5b1ba78](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5b1ba78d1c1c6fc2d2a5e1941be8d38016b036d0))
+
+## [1.2.0-dev.14](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.13...v1.2.0-dev.14) (2026-11-02)
+
+### 🐛 Bug Fixes
+
+* attach Nico comment source picker to Activity decor for reliable touch dispatch ([6a66388](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/6a66388047b031a98a87874f11e147a4011efb46))
+
+## [1.2.0-dev.13](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.12...v1.2.0-dev.13) (2026-11-02)
+
+### 🐛 Bug Fixes
+
+* preserve manual comment source selected outside playback for next episode ([76ce529](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/76ce529d380b56f0de59150da5c4a22b36b1cd49))
+* render comment source chooser line break correctly ([5f566de](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5f566de5fd3ea00dd5f34b2485946f1f070781e0))
+* show selected source and search state within Android source list ([33e416e](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/33e416ee69c49ab223cdf8d70a446fcc77f8efae))
+
+### 🔧 Improvements
+
+* cache TVer EPG by broadcast day to avoid repeated episode lookups ([459911c](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/459911c4d14eb2900049151aeb733021bcfb4720))
+
+## [1.2.0-dev.12](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.11...v1.2.0-dev.12) (2026-11-02)
+
+### ✨ New Features
+
+* capture native TVer episode metadata StateFlow for Jikkyo source matching ([1c34009](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/1c34009f4caaa055015beb8331227c3189fe7622))
+* native episode metadata bridge and in-player comment source picker ([4426da4](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/4426da4dd6a39d7b8313e7299b99b7aab0f38655))
+* per-episode manual source, auto-search switch and reliable comment picker z-order ([ef5df56](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/ef5df569831953829bb119df6a123600f95b00f1))
+* per-episode source matching, candidate chooser and timing correction ([5faddc2](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5faddc280c141c82badf35d9e3e4db451babe89a))
+* search TVer broadcast EPG for candidate Nico Jikkyo sources ([35f2b0c](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/35f2b0c49b871aaa4f7af0a3a7961dc83611d889))
+
+## [1.2.0-dev.11](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.10...v1.2.0-dev.11) (2026-11-02)
+
+### 🐛 Bug Fixes
+
+* remove stale demo renderer tail after 60fps rewrite ([f633b42](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/f633b426ed3141c71b317f665ee5f4dcf685ccce))
+* show actual line breaks in Jikkyo source instructions ([2cd9b0f](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/2cd9b0f3fb33d4f8735b79e43c166948af349c84))
+
+### ✨ New Features
+
+* import Jikkyo comments from Morphe settings and render without demo loop ([a3543de](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/a3543de3a4ad645bc40dfce65b2a30a4d8fc7be2))
+* native opt-in Nico Jikkyo archive reader with bounded batches ([a579934](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/a57993438466712b51e678b2f8bb3ece2d06ef18))
+* one-tap return to ordinary 60fps playback settings ([f8cf243](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/f8cf243dd72d5261433bebde98094323975c4998))
+* render Nico comments with 60fps-friendly lane layout and active-window lookup ([1f79844](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/1f7984403b5d39062c6f935786ee1bec04972d0b))
+
+## [1.2.0-dev.10](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.9...v1.2.0-dev.10) (2026-10-23)
+
+### ✨ New Features
+
+* add opt-in window minimum 120Hz refresh-rate experiment ([9ebcdd5](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/9ebcdd577bb27de282bd544199064c794eb3919d))
+
+## [1.2.0-dev.9](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.8...v1.2.0-dev.9) (2026-10-22)
+
+### ✨ New Features
+
+* add opt-in Media3 video Surface frame-rate hint suppression ([2310174](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/2310174cb2e0924a7fd9b30a60c97245e23636d9))
+
+## [1.2.0-dev.8](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.7...v1.2.0-dev.8) (2026-10-22)
+
+### ✨ New Features
+
+* add opt-in 144Hz preferred display mode for TVer playback ([ec5999e](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/ec5999e90eaf7132dd5eada3a6e15e1723f9064d))
+
+## [1.2.0-dev.7](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.6...v1.2.0-dev.7) (2026-10-22)
+
+### ✨ New Features
+
+* add opt-in Window 120Hz preference during Nico playback ([816ee35](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/816ee35144f485a05a32076ef725ca65b4f4e4df))
+
+## [1.2.0-dev.6](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.5...v1.2.0-dev.6) (2026-10-22)
+
+### ✨ New Features
+
+* add opt-in 120fps preference for Nico WebView comments ([e6dfb11](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/e6dfb11fca3570210fe41011cd236d0d2a904405))
+
+## [1.2.0-dev.5](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.4...v1.2.0-dev.5) (2026-10-21)
+
+### ✨ New Features
+
+* integrate Nico FPS controls and saved log copy into Morphe settings ([92c8b48](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/92c8b4813548ce801e8da5699cb50655eeef1f4a))
+
+## [1.2.0-dev.4](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.3...v1.2.0-dev.4) (2026-10-21)
+
+### ✨ New Features
+
+* add in-app Nico overlay FPS badge and copyable diagnostics ([e794e94](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/e794e9415b9a8ec2c6690494a803463ceefb03b8))
+
+## [1.2.0-dev.3](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.2...v1.2.0-dev.3) (2026-10-21)
+
+### ✨ New Features
+
+* log five-second Nico overlay WebView FPS and frame timing ([3cec013](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3cec013dfc0e679e14c87a5c2b1154bf8c2c8855))
+
+## [1.2.0-dev.2](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.1...v1.2.0-dev.2) (2026-10-21)
+
+### 🐛 Bug Fixes
+
+* keep Nico overlay playback clock monotonic between TVer samples ([8c7e64f](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/8c7e64f62480f676adf8fef4af9443c89a3b294b))
+
+## [1.2.0-dev.1](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.1.0...v1.2.0-dev.1) (2026-10-21)
+
+### 🐛 Bug Fixes
+
+* compile experimental overlay extension with Java 17 ([6646c7d](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/6646c7d15ce0a41761a745233887fa0e99d915db))
+* document installing Nico overlay from published prereleases ([39e8cd2](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/39e8cd279bc24697a8f8c1203e5533410f7dd257))
+
+### ✨ New Features
+
+* add experimental offline Nico overlay prototype for TVer 7.2.1 ([3ec95e0](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3ec95e0264da88c16a953112c23ea3d237f253f9))
+
 ## [1.1.0](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.0.1...v1.1.0) (2026-10-21)
 
 ### 🐛 Bug Fixes

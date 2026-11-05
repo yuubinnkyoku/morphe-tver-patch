@@ -39,6 +39,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Regression test Nico overlay playback clock
+        run: node scripts/test-nico-clock.mjs
+
+      - name: Regression test NCOverlay-style automatic search
+        run: node scripts/test-nco-search.mjs
+
+      - name: Regression test NicoNico video episode matching
+        run: node scripts/test-nico-video-search.mjs
+
+      - name: Regression test simultaneous Jikkyo and NicoNico sources
+        run: node scripts/test-nico-source-plan.mjs
+
       # Semantic release runs its own Gradle build command.
       # Only dev and main branch will generate a release as specified by .releaserc
       - name: Release
