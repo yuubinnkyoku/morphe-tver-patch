@@ -1001,27 +1001,37 @@ public final class NicoOverlayBridge {
         commentSourceStatus = "loading";
         commentSourceError = "";
         commentSourceCount = 0;
-        final List<String> input = new ArrayList<>();
+        final List<String> enabledSources = new ArrayList<>();
         final java.util.Map<String,Integer> perSourceOffsets = new java.util.HashMap<>();
         for (String spec : new java.util.LinkedHashSet<>(specifications)) {
             if (!NicoSourceSettings.enabled(context,spec)) continue;
-            input.add(spec);
+            enabledSources.add(spec);
             perSourceOffsets.put(spec,NicoSourceSettings.offsetSeconds(context,spec));
         }
+        // Preserve at least one slot for each selected NicoNico source even
+        // when auto-discovery finds 32 Jikkyo broadcasts.
+        final List<String> input = NicoSourcePlan.select(enabledSources);
+        if (input.size() < enabledSources.size())
+            Log.i(TAG,"Source cap: selected "+input.size()+" / "
+                +enabledSources.size()+" (NicoNico video slots reserved)");
         new Thread(() -> {
             List<String> combined = new ArrayList<>();
             int total = 0, succeeded = 0, failed = 0;
             String firstFailure = "";
-            for (String spec : input) {
-                if (total >= 30000 || succeeded + failed >= 32) break;
+            for (int sourceIndex=0;sourceIndex<input.size();sourceIndex++) {
+                if (total >= NicoSourcePlan.MAX_COMMENTS) break;
+                String spec = input.get(sourceIndex);
+                int budget = NicoSourcePlan.budget(total,input.size()-sourceIndex);
                 try {
                     JikkyoCommentSource.Result part = spec.startsWith("nico:")
-                        ? NicoVideoCommentSource.fetch(spec,30000-total)
-                        : JikkyoCommentSource.fetch(spec,30000-total);
+                        ? NicoVideoCommentSource.fetch(spec,budget)
+                        : JikkyoCommentSource.fetch(spec,budget);
                     part = shiftComments(part,perSourceOffsets.getOrDefault(spec,0));
                     combined.addAll(part.batches);
                     total += part.count;
                     succeeded++;
+                    Log.i(TAG,"Loaded comment source "+spec+" comments="
+                        +part.count+" / budget="+budget);
                 } catch (Exception error) {
                     failed++;
                     if (firstFailure.isEmpty()) {

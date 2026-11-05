@@ -48,6 +48,9 @@ jobs:
       - name: Regression test NicoNico video episode matching
         run: node scripts/test-nico-video-search.mjs
 
+      - name: Regression test simultaneous Jikkyo and NicoNico sources
+        run: node scripts/test-nico-source-plan.mjs
+
       # Semantic release runs its own Gradle build command.
       # Only dev and main branch will generate a release as specified by .releaserc
       - name: Release

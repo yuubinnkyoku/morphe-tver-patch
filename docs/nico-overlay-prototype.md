@@ -303,3 +303,31 @@ differences, a different anime arc, and marathon broadcasts.
 This remains a focused Android port rather than exhaustive compatibility with
 the full NCOverlay parser and its separately managed NiconiComments slots.
 The TVer media duration is not yet obtained for snapshot result filtering.
+
+
+## 2026-11-05: guarantee source slots and comment budgets for mixed-source playback
+
+Verified the existing auto-discovery flow: TVer starts independent EPG and
+NicoNico searches; each result is saved under a separate key and calls
+reloadAllSources, which merges broadcast specifications with nico:video IDs.
+Generation guards ensure stale asynchronous loads cannot overwrite later ones.
+
+Fixed two actual weaknesses in the previous merged loader:
+
+- 32 automatically discovered Jikkyo broadcasts previously filled the 32
+  source slots before any nico:video at the end of the list. The source
+  selection planner reserves up to six slots for NicoNico video sources.
+- The archives were previously read first and could consume the entire
+  30,000-comment cap, excluding later video comments. The planner now
+  divides the remaining quota among remaining sources; unused quotas
+  carry forward so later sources can benefit from smaller preceding sources.
+
+The cap remains 32 sources and 30,000 imported comments in total. With 32
+Jikkyo broadcasts and six NicoNico IDs, the loader includes up to 26
+Jikkyo broadcasts plus all six NicoNico IDs. The source manager can still
+show a configured item that is excluded by the cap; the loader logs the
+actual selected source count and the count loaded from each source.
+
+A standalone Java regression test verifies mixed source selection, quota
+allocation and video-slot reservation. User-visible playback still requires
+manual device verification.
