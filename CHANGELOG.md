@@ -1,3 +1,9 @@
+## [1.2.0-dev.26](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.25...v1.2.0-dev.26) (2026-11-17)
+
+### ✨ New Features
+
+* **tver:** support TVer 7.4.1 ([d63f85a](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/d63f85affe6e0339f0f3427371be11ef349da98a))
+
 ## [1.2.0-dev.25](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.24...v1.2.0-dev.25) (2026-11-05)
 
 ### 🐛 Bug Fixes
