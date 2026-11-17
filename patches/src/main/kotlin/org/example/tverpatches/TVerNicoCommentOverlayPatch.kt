@@ -11,11 +11,11 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
  */
 @Suppress("unused")
 val tverNicoCommentOverlayPatch = bytecodePatch(
-    name = "TVer: Nico comment overlay prototype (7.2.1)",
+    name = "TVer: Nico comment overlay prototype (7.2.1/7.4.1)",
     description = "Experimental transparent WebView with offline test comments and episode playback synchronization.",
     default = false,
 ) {
-    compatibleWith("jp.hamitv.hamiand1"("7.2.1"))
+    compatibleWith("jp.hamitv.hamiand1"("7.2.1", "7.4.1"))
     // The PiP patch supplies TVer's in-app Morphe settings screen.
     dependsOn(tverPipPatch)
     extendWith("extensions/extension.mpe")

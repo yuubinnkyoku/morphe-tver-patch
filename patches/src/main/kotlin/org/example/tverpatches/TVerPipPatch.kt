@@ -30,7 +30,7 @@ private val videoFragments = listOf(
 /** Opt the video-hosting activities in to Android's system PiP mode. */
 @Suppress("unused")
 val tverPipManifestPatch = resourcePatch {
-    compatibleWith("jp.hamitv.hamiand1"("7.2.1"))
+    compatibleWith("jp.hamitv.hamiand1"("7.2.1", "7.4.1"))
 
     execute {
         val activityNames = setOf(
@@ -72,11 +72,11 @@ val tverPipManifestPatch = resourcePatch {
  */
 @Suppress("unused")
 val tverPipPatch = bytecodePatch(
-    name = "TVer: Android system PiP (7.2.1)",
+    name = "TVer: Android system PiP (7.2.1/7.4.1)",
     description = "Automatically enter system PiP for replay episodes; excludes paused episodes and home previews.",
     default = true,
 ) {
-    compatibleWith("jp.hamitv.hamiand1"("7.2.1"))
+    compatibleWith("jp.hamitv.hamiand1"("7.2.1", "7.4.1"))
     dependsOn(tverPipManifestPatch)
 
     execute {

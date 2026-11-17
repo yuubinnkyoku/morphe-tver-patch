@@ -4,7 +4,7 @@
 
 Unofficial [Morphe](https://morphe.software/) patches for TVer Android. Not affiliated with TVer or Morphe.
 
-**Supported APK:** `jp.hamitv.hamiand1` — **TVer 7.2.1** (versionCode **535**). Other app versions are not verified.
+**Supported APK:** `jp.hamitv.hamiand1` — **TVer 7.2.1 / 7.4.1** (versionCode **535 / 545**). Other app versions are not verified.
 
 ## Features and current status
 
@@ -21,7 +21,7 @@ PiP was tested on an Android device through **v1.0.0-dev.17**, and Morphe settin
 ## Installation
 
 1. Add this [Morphe patch source](https://morphe.software/add-source?github=yuubinnkyoku/morphe-tver-patch); enable prereleases.
-2. Select an **original TVer 7.2.1** APK (package `jp.hamitv.hamiand1`, versionCode 535).
+2. Select an **original TVer 7.2.1** (versionCode 535) or **7.4.1** (versionCode 545) APK (package `jp.hamitv.hamiand1`).
 3. Apply the desired patches, install the resulting APK, and check playback and settings.
 
 Patch bundles are published on [GitHub Releases](https://github.com/yuubinnkyoku/morphe-tver-patch/releases); patched TVer APKs are not distributed here. Keep a way to restore the original app, because patches can cause startup or playback failures. Observe applicable terms and laws.
@@ -91,7 +91,7 @@ yuubinnkyoku TVer patches are licensed under the [GNU General Public License v3.
 
 ## Resolution-based video quality picker (experimental)
 
-Enable **TVer: resolution quality picker (7.2.1)** in Morphe (off by default). In the regular VOD player, the existing **Quality** button opens a list of renditions actually reported by the playback SDK (for example 1080p / 720p) plus **Auto**. When the rendition list is not available, the stock TVer quality menu remains accessible.
+Enable **TVer: resolution quality picker (7.2.1/7.4.1)** in Morphe (off by default). In the regular VOD player, the existing **Quality** button opens a list of renditions actually reported by the playback SDK (for example 1080p / 720p) plus **Auto**. When the rendition list is not available, the stock TVer quality menu remains accessible.
 
 The patch lifts the phone's regular-VOD AUTO/HIGH 720p resolution cap to 1080p, but **it cannot provide 1080p when the server does not offer it**. The displayed current resolution is reported by the playback state. Manual selection is per playback, not a persistent global preference. Live, short-form and legacy players are not guaranteed to work. This is **not yet device-tested**; disable this patch if it causes playback problems.
 
