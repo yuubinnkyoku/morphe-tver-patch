@@ -1,3 +1,13 @@
+## [1.2.0-dev.27](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.26...v1.2.0-dev.27) (2026-11-18)
+
+### 🐛 Bug Fixes
+
+* **nico:** forward window callback explicitly instead of hidden CallbackWrapper ([c954a54](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/c954a5440c7f1cdd72eea55f648223b88ad10459))
+
+### ✨ New Features
+
+* **nico:** auto-hide floating comment button with player controls ([a0e2e87](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/a0e2e875f845ba5c8ff072773194a9dd3d3917b2))
+
 ## [1.2.0-dev.26](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.25...v1.2.0-dev.26) (2026-11-17)
 
 ### ✨ New Features
