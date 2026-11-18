@@ -14,13 +14,20 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.ActionMode;
 import android.view.Display;
 import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.KeyboardShortcutGroup;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.MotionEvent;
+import android.view.SearchEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.accessibility.AccessibilityEvent;
 import android.webkit.ConsoleMessage;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
@@ -517,7 +524,7 @@ public final class NicoOverlayBridge {
      * restored on release if our wrapper is still the installed one.
      */
     private static void installTapObserver(Activity activity) {
-        if (activity == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return;
+        if (activity == null) return;
         if (tapCallback != null && tapActivityRef.get() == activity) return;
         uninstallTapObserver();
         try {
@@ -525,14 +532,7 @@ public final class NicoOverlayBridge {
             if (window == null) return;
             Window.Callback original = window.getCallback();
             if (original == null || original == tapCallback) return;
-            Window.Callback wrapper = new Window.CallbackWrapper(original) {
-                @Override public boolean dispatchTouchEvent(MotionEvent event) {
-                    if (event != null
-                            && event.getActionMasked() == MotionEvent.ACTION_DOWN)
-                        pokeSourceButton();
-                    return super.dispatchTouchEvent(event);
-                }
-            };
+            Window.Callback wrapper = new TapCallback(original);
             tapCallback = wrapper;
             tapCallbackOriginal = original;
             tapActivityRef = new WeakReference<>(activity);
@@ -561,6 +561,92 @@ public final class NicoOverlayBridge {
                 window.setCallback(original);
         } catch (RuntimeException error) {
             Log.w(TAG, "Could not remove comment button tap observer", error);
+        }
+    }
+
+    /**
+     * Forwards every Window.Callback call to the original callback (usually
+     * the Activity itself) unchanged; dispatchTouchEvent additionally pokes
+     * the comment button. Window.CallbackWrapper would do this, but it is a
+     * hidden API and not present in the SDK stub this extension builds with.
+     */
+    private static final class TapCallback implements Window.Callback {
+        private final Window.Callback delegate;
+
+        TapCallback(Window.Callback delegate) { this.delegate = delegate; }
+
+        @Override public boolean dispatchKeyEvent(KeyEvent event) {
+            return delegate.dispatchKeyEvent(event);
+        }
+        @Override public boolean dispatchKeyShortcutEvent(KeyEvent event) {
+            return delegate.dispatchKeyShortcutEvent(event);
+        }
+        @Override public boolean dispatchTouchEvent(MotionEvent event) {
+            if (event != null && event.getActionMasked() == MotionEvent.ACTION_DOWN)
+                pokeSourceButton();
+            return delegate.dispatchTouchEvent(event);
+        }
+        @Override public boolean dispatchTrackballEvent(MotionEvent event) {
+            return delegate.dispatchTrackballEvent(event);
+        }
+        @Override public boolean dispatchGenericMotionEvent(MotionEvent event) {
+            return delegate.dispatchGenericMotionEvent(event);
+        }
+        @Override public boolean dispatchPopulateAccessibilityEvent(AccessibilityEvent event) {
+            return delegate.dispatchPopulateAccessibilityEvent(event);
+        }
+        @Override public View onCreatePanelView(int featureId) {
+            return delegate.onCreatePanelView(featureId);
+        }
+        @Override public boolean onCreatePanelMenu(int featureId, Menu menu) {
+            return delegate.onCreatePanelMenu(featureId, menu);
+        }
+        @Override public boolean onPreparePanel(int featureId, View view, Menu menu) {
+            return delegate.onPreparePanel(featureId, view, menu);
+        }
+        @Override public boolean onMenuOpened(int featureId, Menu menu) {
+            return delegate.onMenuOpened(featureId, menu);
+        }
+        @Override public boolean onMenuItemSelected(int featureId, MenuItem item) {
+            return delegate.onMenuItemSelected(featureId, item);
+        }
+        @Override public void onWindowAttributesChanged(WindowManager.LayoutParams attrs) {
+            delegate.onWindowAttributesChanged(attrs);
+        }
+        @Override public void onContentChanged() { delegate.onContentChanged(); }
+        @Override public void onWindowFocusChanged(boolean hasFocus) {
+            delegate.onWindowFocusChanged(hasFocus);
+        }
+        @Override public void onAttachedToWindow() { delegate.onAttachedToWindow(); }
+        @Override public void onDetachedFromWindow() { delegate.onDetachedFromWindow(); }
+        @Override public void onPanelClosed(int featureId, Menu menu) {
+            delegate.onPanelClosed(featureId, menu);
+        }
+        @Override public boolean onSearchRequested() {
+            return delegate.onSearchRequested();
+        }
+        @Override public boolean onSearchRequested(SearchEvent searchEvent) {
+            return delegate.onSearchRequested(searchEvent);
+        }
+        @Override public ActionMode onWindowStartingActionMode(ActionMode.Callback callback) {
+            return delegate.onWindowStartingActionMode(callback);
+        }
+        @Override public ActionMode onWindowStartingActionMode(
+                ActionMode.Callback callback, int type) {
+            return delegate.onWindowStartingActionMode(callback, type);
+        }
+        @Override public void onActionModeStarted(ActionMode mode) {
+            delegate.onActionModeStarted(mode);
+        }
+        @Override public void onActionModeFinished(ActionMode mode) {
+            delegate.onActionModeFinished(mode);
+        }
+        @Override public void onProvideKeyboardShortcuts(
+                List<KeyboardShortcutGroup> data, Menu menu, int deviceId) {
+            delegate.onProvideKeyboardShortcuts(data, menu, deviceId);
+        }
+        @Override public void onPointerCaptureChanged(boolean hasCapture) {
+            delegate.onPointerCaptureChanged(hasCapture);
         }
     }
 
