@@ -75,6 +75,19 @@ public final class NicoOverlayBridge {
     private static Runnable pendingRelease;
     private static WeakReference<TextView> badgeRef = new WeakReference<>(null);
     private static WeakReference<TextView> sourceBadgeRef = new WeakReference<>(null);
+    // Auto-hide for the floating comment button, mirroring the player
+    // controls: shown on bind, on any screen tap and while paused; faded
+    // out after the Media3 PlayerControlView default show timeout (5 s)
+    // of no interaction while playing.
+    private static final long SOURCE_BUTTON_SHOW_TIMEOUT_MS = 5_000L;
+    private static final long SOURCE_BUTTON_FADE_MS = 250L;
+    private static boolean sourceButtonShown = true;
+    private static boolean playbackPlaying = true;
+    private static int sourceButtonAnimGeneration;
+    private static Window.Callback tapCallback;
+    private static Window.Callback tapCallbackOriginal;
+    private static WeakReference<Activity> tapActivityRef = new WeakReference<>(null);
+    private static final Runnable HIDE_SOURCE_BUTTON = () -> hideSourceButton();
     private static final Deque<String> perfHistory = new ArrayDeque<>();
     private static final int PERF_HISTORY_LIMIT = 12;
     private static String latestPerf;
@@ -242,6 +255,9 @@ public final class NicoOverlayBridge {
                 Log.i(TAG, "Comment source button attached to "
                     + (sourceParent == host ? "episode host (fallback)" : "Activity decor")
                     + ", clickable=" + sourceBadge.isClickable());
+                installTapObserver(activity);
+                sourceButtonShown = true;
+                scheduleSourceButtonHide();
                 updateOverlayGeometry(host);
                 bringOverlaysToFront(host);
                 web.loadDataWithBaseURL(
@@ -295,6 +311,11 @@ public final class NicoOverlayBridge {
             pendingRelease = null;
         }
         MAIN.removeCallbacks(TICK);
+        MAIN.removeCallbacks(HIDE_SOURCE_BUTTON);
+        uninstallTapObserver();
+        sourceButtonAnimGeneration++;
+        sourceButtonShown = true;
+        playbackPlaying = true;
         ticking = false;
         ready = false;
         flow = null;
@@ -319,6 +340,7 @@ public final class NicoOverlayBridge {
         badgeRef = new WeakReference<>(null);
         TextView sourceBadge = sourceBadgeRef.get();
         if (sourceBadge != null) {
+            sourceBadge.animate().cancel();
             sourceBadge.setOnClickListener(null);
             if (sourceBadge.getParent() instanceof ViewGroup)
                 ((ViewGroup) sourceBadge.getParent()).removeView(sourceBadge);
@@ -411,8 +433,10 @@ public final class NicoOverlayBridge {
         label.setMinWidth(dp(host, 96));
         label.setClickable(true);
         label.setOnTouchListener((v, event) -> {
-            if (event.getActionMasked() == MotionEvent.ACTION_DOWN)
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                 Log.i(TAG, "Comment source button received ACTION_DOWN");
+                pokeSourceButton();
+            }
             return false; // Let TextView's click handling see DOWN and UP.
         });
         label.setOnClickListener(v -> {
@@ -422,6 +446,122 @@ public final class NicoOverlayBridge {
             else Log.w(TAG, "Cannot open comment source picker: Activity not found");
         });
         return label;
+    }
+
+    private static void showSourceButton() {
+        TextView badge = sourceBadgeRef.get();
+        if (badge == null) return;
+        int generation = ++sourceButtonAnimGeneration;
+        badge.animate().cancel();
+        sourceButtonShown = true;
+        if (badge.getVisibility() != View.VISIBLE) {
+            badge.setAlpha(0f);
+            badge.setVisibility(View.VISIBLE);
+        }
+        if (badge.getAlpha() < 1f) {
+            badge.animate().alpha(1f).setDuration(SOURCE_BUTTON_FADE_MS)
+                .withEndAction(() -> {
+                    if (generation == sourceButtonAnimGeneration && sourceButtonShown)
+                        badge.setAlpha(1f);
+                }).start();
+        }
+        scheduleSourceButtonHide();
+    }
+
+    private static void scheduleSourceButtonHide() {
+        MAIN.removeCallbacks(HIDE_SOURCE_BUTTON);
+        // While paused the player controls stay on screen, and so does
+        // this button: the hide timer only runs during playback.
+        if (sourceButtonShown && playbackPlaying)
+            MAIN.postDelayed(HIDE_SOURCE_BUTTON, SOURCE_BUTTON_SHOW_TIMEOUT_MS);
+    }
+
+    private static void hideSourceButton() {
+        TextView badge = sourceBadgeRef.get();
+        if (badge == null || !sourceButtonShown) return;
+        int generation = ++sourceButtonAnimGeneration;
+        sourceButtonShown = false;
+        badge.animate().cancel();
+        badge.animate().alpha(0f).setDuration(SOURCE_BUTTON_FADE_MS)
+            .withEndAction(() -> {
+                if (generation == sourceButtonAnimGeneration && !sourceButtonShown)
+                    badge.setVisibility(View.INVISIBLE);
+            }).start();
+    }
+
+    /**
+     * A tap anywhere on the player window is also what makes TVer show its
+     * own controls, so show the comment button alongside them and restart
+     * its hide timer. Called for observed touches only; nothing is consumed.
+     */
+    private static void pokeSourceButton() {
+        if (sourceBadgeRef.get() == null) return;
+        if (!sourceButtonShown) showSourceButton();
+        else scheduleSourceButtonHide();
+    }
+
+    private static void notePlaybackPlaying(boolean playing) {
+        if (playbackPlaying == playing) return;
+        playbackPlaying = playing;
+        if (playing) {
+            scheduleSourceButtonHide();
+        } else {
+            MAIN.removeCallbacks(HIDE_SOURCE_BUTTON);
+            showSourceButton();
+        }
+    }
+
+    /**
+     * Observes (never consumes) touches at the Activity window level.
+     * The wrapped callback is always forwarded to, and the original is
+     * restored on release if our wrapper is still the installed one.
+     */
+    private static void installTapObserver(Activity activity) {
+        if (activity == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return;
+        if (tapCallback != null && tapActivityRef.get() == activity) return;
+        uninstallTapObserver();
+        try {
+            Window window = activity.getWindow();
+            if (window == null) return;
+            Window.Callback original = window.getCallback();
+            if (original == null || original == tapCallback) return;
+            Window.Callback wrapper = new Window.CallbackWrapper(original) {
+                @Override public boolean dispatchTouchEvent(MotionEvent event) {
+                    if (event != null
+                            && event.getActionMasked() == MotionEvent.ACTION_DOWN)
+                        pokeSourceButton();
+                    return super.dispatchTouchEvent(event);
+                }
+            };
+            tapCallback = wrapper;
+            tapCallbackOriginal = original;
+            tapActivityRef = new WeakReference<>(activity);
+            window.setCallback(wrapper);
+            Log.i(TAG, "Comment button tap observer installed");
+        } catch (RuntimeException error) {
+            tapCallback = null;
+            tapCallbackOriginal = null;
+            tapActivityRef = new WeakReference<>(null);
+            Log.w(TAG, "Could not install comment button tap observer", error);
+        }
+    }
+
+    private static void uninstallTapObserver() {
+        Window.Callback wrapper = tapCallback;
+        Window.Callback original = tapCallbackOriginal;
+        Activity activity = tapActivityRef.get();
+        tapCallback = null;
+        tapCallbackOriginal = null;
+        tapActivityRef = new WeakReference<>(null);
+        if (wrapper == null || activity == null) return;
+        try {
+            Window window = activity.getWindow();
+            // Restore only if nobody replaced our wrapper in the meantime.
+            if (window != null && window.getCallback() == wrapper)
+                window.setCallback(original);
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Could not remove comment button tap observer", error);
+        }
     }
 
     // This HUD is a sibling of the WebView, so only its small bounds consume taps.
@@ -1295,6 +1435,9 @@ public final class NicoOverlayBridge {
             NicoAutoSourceController.showCurrentSourceControls(activity);
         });
         dialog.show();
+        // The panel lives in its own window, so taps there do not reach the
+        // tap observer; re-show the button when the panel closes.
+        dialog.setOnDismissListener(d -> showSourceButton());
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
             activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putInt(STYLE_OPACITY, 100).putInt(STYLE_SCALE, 100)
@@ -1517,6 +1660,7 @@ public final class NicoOverlayBridge {
             float speed = ((Number) rate.invoke(state)).floatValue();
             if (!Float.isFinite(speed) || speed <= 0) speed = 1f;
             boolean playing = "PLAYING".equals(String.valueOf(phase.invoke(state)));
+            notePlaybackPlaying(playing);
             boolean isAd = (Boolean) ad.invoke(state);
             boolean isSeeking = (Boolean) seeking.invoke(state);
             long seekGeneration = ((Number) generation.invoke(state)).longValue();
