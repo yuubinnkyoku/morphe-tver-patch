@@ -1,3 +1,13 @@
+## [1.2.0-dev.30](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.29...v1.2.0-dev.30) (2026-11-19)
+
+### 🐛 Bug Fixes
+
+* restore truncated TVerPipPatch source from previous commit ([7b938c3](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/7b938c321ee502f63783aead55d1f1a3a0cfda08))
+
+### ✨ New Features
+
+* keep live playback in background PiP and suppress live pre-roll and companion ads ([3750daa](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/3750daa09825560f758724a8a0af8918f5b84844))
+
 ## [1.2.0-dev.29](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.28...v1.2.0-dev.29) (2026-11-19)
 
 ### ✨ New Features

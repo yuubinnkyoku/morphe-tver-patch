@@ -70,9 +70,9 @@ Morpheのパッチ選択画面で **TVer: resolution quality picker (7.2.1/7.4.1
 ## 🩹 パッチ一覧
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.2.0-dev.29](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.2.0-dev.29)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全6パッチ
+> **[v1.2.0-dev.30](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.2.0-dev.30)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全8パッチ
 <details open>
-<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;6 パッチ</summary>
+<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;8 パッチ</summary>
 <br>
 
 **🎯 対応バージョン:**
@@ -82,8 +82,10 @@ Morpheのパッチ選択画面で **TVer: resolution quality picker (7.2.1/7.4.1
 
 | 💊&nbsp;パッチ | 📜&nbsp;説明 | ⚙️&nbsp;オプション |
 |----------|----------------|-----------|
-| [TVer: Android system PiP (7.2.1/7.4.1)](#tver-android-system-pip-7-2-1-7-4-1) | Automatically enter system PiP for replay episodes; excludes paused episodes and home previews. |  |
+| [TVer: Android system PiP (7.2.1/7.4.1)](#tver-android-system-pip-7-2-1-7-4-1) | Automatically enter system PiP for replay episodes and live/DVR playback; excludes paused replay episodes and home previews. |  |
 | [TVer: Nico comment overlay prototype (7.2.1/7.4.1)](#tver-nico-comment-overlay-prototype-7-2-1-7-4-1) | Experimental transparent WebView with offline test comments and episode playback synchronization. |  |
+| [TVer: keep live playback in background (7.2.1/7.4.1)](#tver-keep-live-playback-in-background-7-2-1-7-4-1) | Live/DVR streams keep playing (audio, and video via PiP) when the app is backgrounded instead of pausing. Paused-on-background bookkeeping and screen-recording suspension for live are disabled as a side effect. |  |
+| [TVer: live pre-roll and companion ad suppression (7.2.1/7.4.1)](#tver-live-pre-roll-and-companion-ad-suppression-7-2-1-7-4-1) | Skip the client-side pre-roll ad on live/DVR starts and never hand companion ads to the live overlay. SSAI mid-rolls stitched into the stream are out of scope. |  |
 | [TVer: live stream 1080p ceiling (7.2.1/7.4.1)](#tver-live-stream-1080p-ceiling-7-2-1-7-4-1) | Raise the realtime-live and DVR AUTO/HIGH max video size from 720p (1280x720) to 1080p (1920x1080). MEDIUM/LOW stay unchanged, and playback falls back to the best rendition the broadcaster actually publishes. |  |
 | [TVer: resolution quality picker (7.2.1/7.4.1)](#tver-resolution-quality-picker-7-2-1-7-4-1) | Choose available video resolutions from a list (Auto, 1080p, 720p, etc.) and allow 1080p on phones for regular VOD. |  |
 | [TVer: skip forced version gate (7.2.1/7.4.1)](#tver-skip-forced-version-gate-7-2-1-7-4-1) | Experimental: suppress the splash version gate dialogs (forced store redirect and newest-version recommendation) by making ForceUpdateUtil.shouldForceUpdate return false. Content APIs are not modified. |  |
