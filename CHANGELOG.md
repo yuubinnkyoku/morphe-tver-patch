@@ -1,3 +1,9 @@
+## [1.2.0-dev.29](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.28...v1.2.0-dev.29) (2026-11-19)
+
+### ✨ New Features
+
+* **live:** raise live/DVR quality ceiling from 720p to 1080p ([c7a0995](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/c7a0995bfa349eac8338b215a3e99ab056baacef))
+
 ## [1.2.0-dev.28](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.27...v1.2.0-dev.28) (2026-11-19)
 
 ### ✨ New Features

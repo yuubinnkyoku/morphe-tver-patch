@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-11-19T03:57:35",
-  "description": "## [1.2.0-dev.28](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.27...v1.2.0-dev.28) (2026-11-19)\n\n### ✨ New Features\n\n* **tver:** skip splash forced version gate ([6520fd0](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/6520fd0205680537ee50fef9df25394ff5ba61de))",
-  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.2.0-dev.28/patches-1.2.0-dev.28.mpp",
+  "created_at": "2026-11-19T06:48:04",
+  "description": "## [1.2.0-dev.29](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.28...v1.2.0-dev.29) (2026-11-19)\n\n### ✨ New Features\n\n* **live:** raise live/DVR quality ceiling from 720p to 1080p ([c7a0995](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/c7a0995bfa349eac8338b215a3e99ab056baacef))",
+  "download_url": "https://github.com/yuubinnkyoku/morphe-tver-patch/releases/download/v1.2.0-dev.29/patches-1.2.0-dev.29.mpp",
   "signature_download_url": "",
-  "version": "1.2.0-dev.28"
+  "version": "1.2.0-dev.29"
 }
