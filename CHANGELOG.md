@@ -1,3 +1,9 @@
+## [1.2.0-dev.31](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.30...v1.2.0-dev.31) (2026-11-19)
+
+### ✨ New Features
+
+* sync floating comment button visibility with player controls ([5a6bf3d](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5a6bf3d84b30b34d2612d6cfec797433e0176c79))
+
 ## [1.2.0-dev.30](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.29...v1.2.0-dev.30) (2026-11-19)
 
 ### 🐛 Bug Fixes
