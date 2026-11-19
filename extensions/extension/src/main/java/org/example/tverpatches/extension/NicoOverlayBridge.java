@@ -89,6 +89,12 @@ public final class NicoOverlayBridge {
     private static final long SOURCE_BUTTON_SHOW_TIMEOUT_MS = 5_000L;
     private static final long SOURCE_BUTTON_FADE_MS = 250L;
     private static boolean sourceButtonShown = true;
+    // Mirror of the stock player-controls visibility when the patcher hooks
+    // the PlayerUiState.setVisibility funnel (TVer 7.4.1+). While
+    // controlsHookActive is true the button follows the stock controls and
+    // the local tap-observer fallback stays dormant (7.2.1 keeps it).
+    private static volatile boolean controlsHookActive = false;
+    private static volatile Boolean controlsVisible = null;
     private static boolean playbackPlaying = true;
     private static int sourceButtonAnimGeneration;
     private static Window.Callback tapCallback;
@@ -264,6 +270,8 @@ public final class NicoOverlayBridge {
                     + ", clickable=" + sourceBadge.isClickable());
                 installTapObserver(activity);
                 sourceButtonShown = true;
+                controlsHookActive = false;
+                controlsVisible = null;
                 scheduleSourceButtonHide();
                 updateOverlayGeometry(host);
                 bringOverlaysToFront(host);
@@ -323,6 +331,8 @@ public final class NicoOverlayBridge {
         sourceButtonAnimGeneration++;
         sourceButtonShown = true;
         playbackPlaying = true;
+        controlsHookActive = false;
+        controlsVisible = null;
         ticking = false;
         ready = false;
         flow = null;
@@ -477,6 +487,7 @@ public final class NicoOverlayBridge {
 
     private static void scheduleSourceButtonHide() {
         MAIN.removeCallbacks(HIDE_SOURCE_BUTTON);
+        if (controlsHookActive) return;
         // While paused the player controls stay on screen, and so does
         // this button: the hide timer only runs during playback.
         if (sourceButtonShown && playbackPlaying)
@@ -502,7 +513,7 @@ public final class NicoOverlayBridge {
      * its hide timer. Called for observed touches only; nothing is consumed.
      */
     private static void pokeSourceButton() {
-        if (sourceBadgeRef.get() == null) return;
+        if (sourceBadgeRef.get() == null || controlsHookActive) return;
         if (!sourceButtonShown) showSourceButton();
         else scheduleSourceButtonHide();
     }
@@ -510,12 +521,32 @@ public final class NicoOverlayBridge {
     private static void notePlaybackPlaying(boolean playing) {
         if (playbackPlaying == playing) return;
         playbackPlaying = playing;
+        if (controlsHookActive) return;
         if (playing) {
             scheduleSourceButtonHide();
         } else {
             MAIN.removeCallbacks(HIDE_SOURCE_BUTTON);
             showSourceButton();
         }
+    }
+
+    /**
+     * Called by the patched-in instructions at the head of TVer 7.4.1's
+     * PlayerUiState.setVisibility funnel; {@code shown} mirrors the
+     * stock player controls. Every visibility decision comes from here
+     * while the hook is active, so the floating comment button hides on
+     * bare-video taps and follows the stock 3 s auto-hide with them.
+     */
+    public static void noteControlsVisible(boolean shown) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            MAIN.post(() -> noteControlsVisible(shown));
+            return;
+        }
+        controlsHookActive = true;
+        controlsVisible = shown;
+        MAIN.removeCallbacks(HIDE_SOURCE_BUTTON);
+        if (shown) showSourceButton();
+        else hideSourceButton();
     }
 
     /**
@@ -1522,8 +1553,11 @@ public final class NicoOverlayBridge {
         });
         dialog.show();
         // The panel lives in its own window, so taps there do not reach the
-        // tap observer; re-show the button when the panel closes.
-        dialog.setOnDismissListener(d -> showSourceButton());
+        // tap observer; re-show the button when the panel closes unless the
+        // stock controls are currently hidden (visibility-sync hook active).
+        dialog.setOnDismissListener(d -> {
+            if (controlsVisible == null || controlsVisible) showSourceButton();
+        });
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
             activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putInt(STYLE_OPACITY, 100).putInt(STYLE_SCALE, 100)

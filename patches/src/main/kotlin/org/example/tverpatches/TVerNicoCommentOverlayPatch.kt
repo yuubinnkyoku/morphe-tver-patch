@@ -116,6 +116,39 @@ val tverNicoCommentOverlayPatch = bytecodePatch(
         episodeMeta.addInstructions(1,
             "invoke-static {v0}, $bridgeType->rememberEpisodeMetaFlow(Ljava/lang/Object;)V")
 
+        // TVer 7.4.1 funnels every episode player-controls visibility change
+        // (tap-to-toggle on the bare video, the 3 s auto-hide tick, picker and
+        // seek suspensions, play/pause re-shows) through the single private
+        // PlayerUiState.setVisibility(VisibilityState) funnel; its direct and
+        // virtual callers were verified to be the only mutators in 7.4.1
+        // (classes6.dex). Mirroring that funnel lets the floating comment
+        // button show/hide in exact lock-step with the stock controls instead
+        // of the extension's independent 5 s fallback timer. The class does
+        // not exist in 7.2.1 (Media3 PlayerControlView era), so the hook is
+        // optional: the extension falls back to its own tap observer timer.
+        val playerUiState = mutableClassDefByOrNull(
+            "Ljp/play/tverplayer/player/ui/compose/state/PlayerUiState;")
+        if (playerUiState != null) {
+            fun <T> T.must(description: String, block: T.() -> Boolean) {
+                check(block()) { "$description; refusing to inject" }
+            }
+            val setVisibility = playerUiState.methods.single {
+                it.name == "setVisibility" && it.parameterTypes.map(
+                    CharSequence::toString,
+                ) == listOf("Ljp/play/tverplayer/player/ui/compose/widget/VisibilityState;")
+            }
+            // Verified on 7.4.1: direct method, .registers 3 (v0 is a free
+            // local), 6 instructions, never inlined by R8 (11 call sites).
+            setVisibility.must("Unexpected PlayerUiState.setVisibility shape") {
+                implementation?.registerCount == 3
+            }
+            setVisibility.addInstructions(0, """
+                invoke-virtual {p1}, Ljp/play/tverplayer/player/ui/compose/widget/VisibilityState;->getShown()Z
+                move-result v0
+                invoke-static {v0}, $bridgeType->noteControlsVisible(Z)V
+            """.trimIndent())
+        }
+
         // Enhance the existing settings LinearLayout (v7) before the original
         // AlertDialog.Builder.setView() call. This patch runs after PiP because
         // it depends on that patch's generated morpheShowSettingsDialog method.
