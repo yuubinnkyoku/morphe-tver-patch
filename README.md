@@ -70,9 +70,9 @@ Morpheのパッチ選択画面で **TVer: resolution quality picker (7.2.1/7.4.1
 ## 🩹 パッチ一覧
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.2.0-dev.27](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.2.0-dev.27)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全4パッチ
+> **[v1.2.0-dev.28](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.2.0-dev.28)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全5パッチ
 <details open>
-<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;4 パッチ</summary>
+<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;5 パッチ</summary>
 <br>
 
 **🎯 対応バージョン:**
@@ -85,6 +85,7 @@ Morpheのパッチ選択画面で **TVer: resolution quality picker (7.2.1/7.4.1
 | [TVer: Android system PiP (7.2.1/7.4.1)](#tver-android-system-pip-7-2-1-7-4-1) | Automatically enter system PiP for replay episodes; excludes paused episodes and home previews. |  |
 | [TVer: Nico comment overlay prototype (7.2.1/7.4.1)](#tver-nico-comment-overlay-prototype-7-2-1-7-4-1) | Experimental transparent WebView with offline test comments and episode playback synchronization. |  |
 | [TVer: resolution quality picker (7.2.1/7.4.1)](#tver-resolution-quality-picker-7-2-1-7-4-1) | Choose available video resolutions from a list (Auto, 1080p, 720p, etc.) and allow 1080p on phones for regular VOD. |  |
+| [TVer: skip forced version gate (7.2.1/7.4.1)](#tver-skip-forced-version-gate-7-2-1-7-4-1) | Experimental: suppress the splash version gate dialogs (forced store redirect and newest-version recommendation) by making ForceUpdateUtil.shouldForceUpdate return false. Content APIs are not modified. |  |
 | [TVer: suppress player ads (7.2.1/7.4.1)](#tver-suppress-player-ads-7-2-1-7-4-1) | Experimentally suppress selected player ad requests and hooks; full ad blocking is not guaranteed. |  |
 
 </details>

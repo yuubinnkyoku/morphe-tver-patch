@@ -1,3 +1,9 @@
+## [1.2.0-dev.28](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.27...v1.2.0-dev.28) (2026-11-19)
+
+### ✨ New Features
+
+* **tver:** skip splash forced version gate ([6520fd0](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/6520fd0205680537ee50fef9df25394ff5ba61de))
+
 ## [1.2.0-dev.27](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.26...v1.2.0-dev.27) (2026-11-18)
 
 ### 🐛 Bug Fixes
