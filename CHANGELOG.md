@@ -1,3 +1,13 @@
+## [1.2.0-dev.32](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.31...v1.2.0-dev.32) (2026-11-20)
+
+### 🐛 Bug Fixes
+
+* hold live background playback only when leaving the app ([02d9269](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/02d9269c2a7b894a773e5e2ae2604dd88f6f43ec))
+
+### ✨ New Features
+
+* replace live quality sheet with actual rendition list ([5286bb0](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/5286bb0a3ced0c3702d54a9079a6fdd21a5f87dc))
+
 ## [1.2.0-dev.31](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.30...v1.2.0-dev.31) (2026-11-19)
 
 ### ✨ New Features
