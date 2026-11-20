@@ -9,11 +9,11 @@ import app.morphe.patcher.patch.bytecodePatch
  */
 @Suppress("unused")
 val tverAdsPatch = bytecodePatch(
-    name = "TVer: suppress player ads (7.2.1)",
+    name = "TVer: suppress player ads (7.2.1/7.4.1)",
     description = "Experimentally suppress selected player ad requests and hooks; full ad blocking is not guaranteed.",
     default = true,
 ) {
-    compatibleWith("jp.hamitv.hamiand1"("7.2.1"))
+    compatibleWith("jp.hamitv.hamiand1"("7.2.1", "7.4.1"))
 
     execute {
         fun patch(className: String, name: String, smali: String) {

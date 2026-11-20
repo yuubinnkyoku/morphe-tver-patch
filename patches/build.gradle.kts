@@ -3,7 +3,7 @@ group = "io.github.yuubinnkyoku"
 patches {
     about {
         name = "yuubinnkyoku TVer patches"
-        description = "Experimental picture-in-picture and ad suppression for TVer 7.2.1"
+        description = "Experimental picture-in-picture and ad suppression for TVer 7.2.1/7.4.1"
         source = "https://github.com/yuubinnkyoku/morphe-tver-patch"
         author = "yuubinnkyoku"
         contact = "https://github.com/yuubinnkyoku"

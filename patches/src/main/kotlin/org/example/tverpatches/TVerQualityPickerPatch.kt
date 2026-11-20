@@ -36,11 +36,11 @@ private const val MAIN_PARENT =
  */
 @Suppress("unused")
 val tverQualityPickerPatch = bytecodePatch(
-    name = "TVer: resolution quality picker (7.2.1)",
+    name = "TVer: resolution quality picker (7.2.1/7.4.1)",
     description = "Choose available video resolutions from a list (Auto, 1080p, 720p, etc.) and allow 1080p on phones for regular VOD.",
     default = false,
 ) {
-    compatibleWith("jp.hamitv.hamiand1"("7.2.1"))
+    compatibleWith("jp.hamitv.hamiand1"("7.2.1", "7.4.1"))
     extendWith("extensions/extension.mpe")
 
     execute {

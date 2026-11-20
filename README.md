@@ -4,7 +4,7 @@
 
 Android版TVer向けの非公式[Morphe](https://morphe.software/)パッチ集です。TVerおよびMorpheの公式プロジェクトではありません。
 
-**対応アプリ：TVer 7.2.1**（パッケージ名：`jp.hamitv.hamiand1`、versionCode：`535`）。ほかのバージョンでの動作は未確認です。
+**対応アプリ：TVer 7.2.1 / 7.4.1**（パッケージ名：`jp.hamitv.hamiand1`、versionCode：`535` / `545`）。ほかのバージョンでの動作は未確認です。
 
 ## 機能一覧
 
@@ -24,7 +24,7 @@ PiPは`v1.0.0-dev.17`まで、Morphe設定は`v1.0.0-dev.18`までの実機テ�
 [**➕ Morpheにパッチソースを追加**](https://morphe.software/add-source?github=yuubinnkyoku/morphe-tver-patch)
 
 1. 上のリンクでMorpheにパッチソースを追加します。開発版を使う場合はプレリリースも有効にしてください。
-2. 対応するオリジナルのTVer 7.2.1（`jp.hamitv.hamiand1`、versionCode `535`）のAPKを用意します。
+2. 対応するオリジナルのTVer 7.2.1（versionCode `535`）または 7.4.1（versionCode `545`）のAPKを用意します（パッケージ名はどちらも `jp.hamitv.hamiand1`）。
 3. Morpheで必要なパッチを選んで適用し、インストールします。
 4. アプリの起動・動画再生・PiP・設定画面を確認してください。
 
@@ -39,13 +39,13 @@ PiPは`v1.0.0-dev.17`まで、Morphe設定は`v1.0.0-dev.18`までの実機テ�
 
 ## 解像度別の画質選択（実験的）
 
-Morpheのパッチ選択画面で **TVer: resolution quality picker (7.2.1)** を有効にしてください。初期状態では無効になっています。
+Morpheのパッチ選択画面で **TVer: resolution quality picker (7.2.1/7.4.1)** を有効にしてください。初期状態では無効になっています。
 
 - 通常の見逃し配信で再生画面の **「画質」** を押すと、その動画から取得できた解像度の一覧と「自動」を表示します。未準備の場合はTVer標準の画質メニューに戻ります。
 - 「現在の動画の画質」には、再生器が報告する映像解像度を表示します。メニューの候補が1080pでも、実際に1080pで再生されることを保証しません。
 - スマートフォンの通常VODに対する「自動・高」の上限を720pから1080pへ変更します。**1080pの映像をサーバーが提供していなければ選べません**。
 - 選択は**現在の再生にのみ**適用されます。動画を切り替えた場合の設定保持は未実装です。ライブ・縦型動画・旧再生器では動作を保証しません。
-- この機能はTVer 7.2.1の内部クラス構造に依存しています。実機検証前の試験的な実装のため、不具合があれば本パッチだけ無効にしてください。
+- この機能はTVer 7.2.1/7.4.1の内部クラス構造に依存しています。実機検証前の試験的な実装のため、不具合があれば本パッチだけ無効にしてください。
 - 問題を調べる場合は `adb logcat -s MorpheTVerQuality:V '*:S'` で画質関連のエラーを確認できます。
 
 ## 今後の予定（未実装）
@@ -70,21 +70,27 @@ Morpheのパッチ選択画面で **TVer: resolution quality picker (7.2.1)** �
 ## 🩹 パッチ一覧
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.1.0](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.1.0)**&nbsp;&nbsp;•&nbsp;&nbsp;`main`&nbsp;&nbsp;•&nbsp;&nbsp;全3パッチ
+> **[v1.2.0-dev.32](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.2.0-dev.32)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全9パッチ
 <details open>
-<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;3 パッチ</summary>
+<summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;9 パッチ</summary>
 <br>
 
 **🎯 対応バージョン:**
 
-| 7.2.1 |
-| :---: |
+| 7.2.1 | 7.4.1 |
+| :---: | :---: |
 
 | 💊&nbsp;パッチ | 📜&nbsp;説明 | ⚙️&nbsp;オプション |
 |----------|----------------|-----------|
-| [TVer: 自動ピクチャーインピクチャー (7.2.1)](#tver-android-system-pip-7-2-1) | 見逃し配信を開いた直後・読み込み中・再生中に自動PiPへ移行。一時停止中やホームのプレビューは除外します。 |  |
-| [TVer: resolution quality picker (7.2.1)](#tver-resolution-quality-picker-7-2-1) | Choose available video resolutions from a list (Auto, 1080p, 720p, etc.) and allow 1080p on phones for regular VOD. |  |
-| [TVer: プレイヤー広告の抑制 (7.2.1)](#tver-suppress-player-ads-7-2-1) | 一部の広告リクエストや再生処理を抑える実験的なパッチです。広告が完全になくなることは保証しません。 |  |
+| [TVer: Android system PiP (7.2.1/7.4.1)](#tver-android-system-pip-7-2-1-7-4-1) | Automatically enter system PiP for replay episodes and live/DVR playback; excludes paused replay episodes and home previews. |  |
+| [TVer: Nico comment overlay prototype (7.2.1/7.4.1)](#tver-nico-comment-overlay-prototype-7-2-1-7-4-1) | Experimental transparent WebView with offline test comments and episode playback synchronization. |  |
+| [TVer: keep live playback in background (7.2.1/7.4.1)](#tver-keep-live-playback-in-background-7-2-1-7-4-1) | Live/DVR streams keep playing (audio, and video via PiP) when the app itself is backgrounded, e.g. Home gesture, while in-app navigation and modal sheets pause/release them as in the stock app. |  |
+| [TVer: live pre-roll and companion ad suppression (7.2.1/7.4.1)](#tver-live-pre-roll-and-companion-ad-suppression-7-2-1-7-4-1) | Skip the client-side pre-roll ad on live/DVR starts and never hand companion ads to the live overlay. SSAI mid-rolls stitched into the stream are out of scope. |  |
+| [TVer: live resolution quality picker (7.2.1/7.4.1)](#tver-live-resolution-quality-picker-7-2-1-7-4-1) | Choose live/DVR video resolutions from the actual rendition list (Auto, 1080p, 720p, etc.) instead of the fixed 4-choice quality sheet. |  |
+| [TVer: live stream 1080p ceiling (7.2.1/7.4.1)](#tver-live-stream-1080p-ceiling-7-2-1-7-4-1) | Raise the realtime-live and DVR AUTO/HIGH max video size from 720p (1280x720) to 1080p (1920x1080). MEDIUM/LOW stay unchanged, and playback falls back to the best rendition the broadcaster actually publishes. |  |
+| [TVer: resolution quality picker (7.2.1/7.4.1)](#tver-resolution-quality-picker-7-2-1-7-4-1) | Choose available video resolutions from a list (Auto, 1080p, 720p, etc.) and allow 1080p on phones for regular VOD. |  |
+| [TVer: skip forced version gate (7.2.1/7.4.1)](#tver-skip-forced-version-gate-7-2-1-7-4-1) | Experimental: suppress the splash version gate dialogs (forced store redirect and newest-version recommendation) by making ForceUpdateUtil.shouldForceUpdate return false. Content APIs are not modified. |  |
+| [TVer: suppress player ads (7.2.1/7.4.1)](#tver-suppress-player-ads-7-2-1-7-4-1) | Experimentally suppress selected player ad requests and hooks; full ad blocking is not guaranteed. |  |
 
 </details>
 

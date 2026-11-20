@@ -30,7 +30,7 @@ private val videoFragments = listOf(
 /** Opt the video-hosting activities in to Android's system PiP mode. */
 @Suppress("unused")
 val tverPipManifestPatch = resourcePatch {
-    compatibleWith("jp.hamitv.hamiand1"("7.2.1"))
+    compatibleWith("jp.hamitv.hamiand1"("7.2.1", "7.4.1"))
 
     execute {
         val activityNames = setOf(
@@ -72,11 +72,11 @@ val tverPipManifestPatch = resourcePatch {
  */
 @Suppress("unused")
 val tverPipPatch = bytecodePatch(
-    name = "TVer: Android system PiP (7.2.1)",
-    description = "Automatically enter system PiP for replay episodes; excludes paused episodes and home previews.",
+    name = "TVer: Android system PiP (7.2.1/7.4.1)",
+    description = "Automatically enter system PiP for replay episodes and live/DVR playback; excludes paused replay episodes and home previews.",
     default = true,
 ) {
-    compatibleWith("jp.hamitv.hamiand1"("7.2.1"))
+    compatibleWith("jp.hamitv.hamiand1"("7.2.1", "7.4.1"))
     dependsOn(tverPipManifestPatch)
 
     execute {
@@ -512,6 +512,90 @@ val tverPipPatch = bytecodePatch(
                 }
             )
 
+            // Live detail playback (realtime live / DVR) is hosted by the legacy
+            // LivePlaybackControllerView inside MainActivity. Scan the window for
+            // a shown instance, mirroring morpheFindReplayView. Only that view's
+            // owner activity may auto-enter PiP from these helpers.
+            check(cls.methods.none { it.name == "morpheFindLiveView" || it.name == "morpheIsLiveVisible" })
+            cls.methods.add(
+                ImmutableMethod(
+                    activityType,
+                    "morpheFindLiveView",
+                    listOf(ImmutableMethodParameter("Landroid/view/View;", null, null)),
+                    "Z",
+                    AccessFlags.PUBLIC.value or AccessFlags.STATIC.value,
+                    null,
+                    null,
+                    MutableMethodImplementation(6),
+                ).toMutable().apply {
+                    addInstructions(
+                        0,
+                        """
+                            if-eqz p0, :not_found
+                            invoke-virtual {p0}, Landroid/view/View;->isShown()Z
+                            move-result v0
+                            if-eqz v0, :not_found
+                            instance-of v0, p0, Ljp/hamitv/hamiand1/tver/legacy/player/live/LivePlaybackControllerView;
+                            if-eqz v0, :scan_children
+                            const/4 v0, 0x1
+                            return v0
+                            :scan_children
+                            instance-of v0, p0, Landroid/view/ViewGroup;
+                            if-eqz v0, :not_found
+                            check-cast p0, Landroid/view/ViewGroup;
+                            invoke-virtual {p0}, Landroid/view/ViewGroup;->getChildCount()I
+                            move-result v2
+                            const/4 v3, 0x0
+                            :loop
+                            if-ge v3, v2, :not_found
+                            invoke-virtual {p0, v3}, Landroid/view/ViewGroup;->getChildAt(I)Landroid/view/View;
+                            move-result-object v4
+                            invoke-static {v4}, $activityType->morpheFindLiveView(Landroid/view/View;)Z
+                            move-result v0
+                            if-nez v0, :found
+                            add-int/lit8 v3, v3, 0x1
+                            goto :loop
+                            :found
+                            const/4 v0, 0x1
+                            return v0
+                            :not_found
+                            const/4 v0, 0x0
+                            return v0
+                        """.trimIndent(),
+                    )
+                }
+            )
+            cls.methods.add(
+                ImmutableMethod(
+                    activityType,
+                    "morpheIsLiveVisible",
+                    emptyList(),
+                    "Z",
+                    AccessFlags.PUBLIC.value,
+                    null,
+                    null,
+                    MutableMethodImplementation(2),
+                ).toMutable().apply {
+                    addInstructions(
+                        0,
+                        """
+                            invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+                            move-result-object v0
+                            if-eqz v0, :not_found
+                            invoke-virtual {v0}, Landroid/view/Window;->getDecorView()Landroid/view/View;
+                            move-result-object v0
+                            if-eqz v0, :not_found
+                            invoke-static {v0}, $activityType->morpheFindLiveView(Landroid/view/View;)Z
+                            move-result v0
+                            return v0
+                            :not_found
+                            const/4 v0, 0x0
+                            return v0
+                        """.trimIndent(),
+                    )
+                }
+            )
+
             addVoidMethod(
                 "morphePipWindowFocusChanged", listOf("Z"), 3,
                 """
@@ -565,6 +649,12 @@ val tverPipPatch = bytecodePatch(
                     :episode_can_pip
                     const/4 v1, 0x1
                     :episode_state_ready
+                    # Live detail (live/DVR) playback also auto-enters PiP when
+                    # its legacy controller view is visible in the window.
+                    if-nez v1, :live_checked
+                    invoke-virtual {p0}, $activityType->morpheIsLiveVisible()Z
+                    move-result v1
+                    :live_checked
                     invoke-virtual {p0}, Landroid/app/Activity;->getIntent()Landroid/content/Intent;
                     move-result-object v2
                     if-eqz v2, :apply
@@ -657,17 +747,22 @@ val tverPipPatch = bytecodePatch(
                     ${if (descriptor == "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;") """
                     invoke-virtual {p0}, $descriptor->morpheIsReplayVisible()Z
                     move-result v0
-                    if-eqz v0, :not_a_replay
+                    if-eqz v0, :check_live
                     invoke-static {}, Ljp/hamitv/hamiand1/feature/episode/playback/EpisodePlaybackCoordinator;->morpheIsEpisodePaused()Z
                     move-result v0
                     if-nez v0, :paused_leave
+                    goto :pip_allowed
+                    :check_live
+                    invoke-virtual {p0}, $descriptor->morpheIsLiveVisible()Z
+                    move-result v0
+                    if-eqz v0, :no_player
                     goto :pip_allowed
                     :paused_leave
                     const-string v0, "TVerPipDebug"
                     const-string v1, "REPLAY_PAUSED: block leave-hint PiP"
                     invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
                     goto :done
-                    :not_a_replay
+                    :no_player
                     const-string v0, "TVerPipDebug"
                     const-string v1, "REPLAY_VIEW_MISSING: block leave-hint PiP"
                     invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
@@ -757,11 +852,16 @@ val tverPipPatch = bytecodePatch(
                             ${if (activityType == "Ljp/hamitv/hamiand1/tver/ui/activities/MainActivity;") """
                             invoke-virtual {p0}, $activityType->morpheIsReplayVisible()Z
                             move-result v0
-                            if-eqz v0, :request_home_blocked
+                            if-eqz v0, :request_check_live
                             invoke-static {}, Ljp/hamitv/hamiand1/feature/episode/playback/EpisodePlaybackCoordinator;->morpheIsEpisodePaused()Z
                             move-result v0
                             if-nez v0, :request_paused_blocked
                             goto :request_pip
+                            :request_check_live
+                            invoke-virtual {p0}, $activityType->morpheIsLiveVisible()Z
+                            move-result v0
+                            if-nez v0, :request_pip
+                            goto :request_home_blocked
                             :request_paused_blocked
                             const-string v0, "TVerPipDebug"
                             const-string v1, "REPLAY_PAUSED: block system PiP"
