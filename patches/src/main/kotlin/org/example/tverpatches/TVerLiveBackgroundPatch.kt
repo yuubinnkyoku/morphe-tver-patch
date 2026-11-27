@@ -69,9 +69,17 @@ val tverLiveBackgroundPatch = bytecodePatch(
                 invoke-static {p0}, $HOLD->shouldHold(Ljava/lang/Object;)Z
                 move-result v0
                 if-eqz v0, :stock_background
+                const/4 v0, 0x1
+                iput-boolean v0, p0, Ljp/hamitv/hamiand1/tver/legacy/player/live/LivePlaybackControllerView;->isBackgrounded:Z
                 return-void
             """.trimIndent(),
             ExternalLabel("stock_background", first),
         )
+        // Marking isBackgrounded mirrors what the stock toBackground body
+        // does first. LivePlaybackControllerView.onStop() early-returns when
+        // the flag is set; without it, a Home/PiP transition that skips the
+        // stock body falls through to onStop's direct pause() (it only
+        // runs when toBackground did not), which stops the held stream a
+        // moment after the pause-side hold. onResume() clears the flag.
     }
 }

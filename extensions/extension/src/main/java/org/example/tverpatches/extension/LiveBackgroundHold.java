@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.os.Bundle;
 import android.os.Looper;
+import android.os.SystemClock;
+import android.util.Log;
 
 import java.util.Collections;
 import java.util.Set;
@@ -21,11 +23,27 @@ import java.util.WeakHashMap;
  * the proprietary TVer APK, while the patch injects it into that APK.
  */
 public final class LiveBackgroundHold {
+    private static final String TAG = "MorpheLiveHold";
+    /** How long after a PiP request the entry pause is treated as "leaving". */
+    private static final long PIP_REQUEST_WINDOW_MS = 3000L;
     private static volatile boolean tracked;
+    private static volatile long pipRequestedAt; // SystemClock.elapsedRealtime
     private static final Set<Activity> RESUMED =
             Collections.newSetFromMap(Collections.synchronizedMap(new WeakHashMap<Activity, Boolean>()));
 
     private LiveBackgroundHold() {}
+
+    /**
+     * Patch-injected entry point of MainActivity/Hilt_MainActivity.
+     * onPictureInPictureRequested(), which TVerPipPatch synthesizes. The
+     * system calls it before onPause of the PiP transition, and
+     * isInPictureInPictureMode() only flips after onPause, so this
+     * timestamp covers the entry pause itself.
+     */
+    public static void notePipRequested() {
+        pipRequestedAt = SystemClock.elapsedRealtime();
+        Log.i(TAG, "notePipRequested");
+    }
 
     /**
      * Patch-injected entry point of LivePlaybackControllerView.toBackground().
@@ -39,18 +57,19 @@ public final class LiveBackgroundHold {
         }
         Activity activity = findActivity(view);
         if (activity == null) {
+            Log.i(TAG, "shouldHold=false (no activity)");
             return false;
         }
         ensureTracked(activity);
-        if (activity.isInPictureInPictureMode()) {
-            return true;
-        }
-        // onActivityPrePaused has already removed the pausing Activity by
-        // the time fragment lifecycle observers run during PiP entry or a
-        // Home gesture, so the set is empty exactly when no Activity of
-        // this process remains resumed. In-app navigation keeps the host
-        // Activity resumed, so the set is non-empty and stock runs.
-        return RESUMED.isEmpty();
+        boolean pip = activity.isInPictureInPictureMode();
+        long now = SystemClock.elapsedRealtime();
+        boolean pipEntering = pipRequestedAt > 0 && now - pipRequestedAt < PIP_REQUEST_WINDOW_MS;
+        boolean resumedEmpty = RESUMED.isEmpty();
+        boolean hold = pip || pipEntering || resumedEmpty;
+        Log.i(TAG, "shouldHold=" + hold + " pip=" + pip + " pipEntering=" + pipEntering
+                + " resumedEmpty=" + resumedEmpty
+                + " activity=" + activity.getClass().getSimpleName());
+        return hold;
     }
 
     private static Activity findActivity(Object view) {

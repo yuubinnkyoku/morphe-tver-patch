@@ -78,6 +78,7 @@ val tverPipPatch = bytecodePatch(
 ) {
     compatibleWith("jp.hamitv.hamiand1"("7.2.1", "7.4.1"))
     dependsOn(tverPipManifestPatch)
+    extendWith("extensions/extension.mpe")
 
     execute {
         fun markFragment(descriptor: String, lifecycleName: String, visible: Boolean) {
@@ -846,6 +847,7 @@ val tverPipPatch = bytecodePatch(
                     addInstructions(
                         0,
                         """
+                            invoke-static {}, Lorg/example/tverpatches/extension/LiveBackgroundHold;->notePipRequested()V
                             const-string v0, "TVerPipDebug"
                             const-string v1, "ON_PIP_REQUESTED: system callback"
                             invoke-static {v0, v1}, Landroid/util/Log;->i(Ljava/lang/String;Ljava/lang/String;)I
