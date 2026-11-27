@@ -70,7 +70,7 @@ Morpheのパッチ選択画面で **TVer: resolution quality picker (7.2.1/7.4.1
 ## 🩹 パッチ一覧
 
 <!-- PATCHES_START EXPANDED -->
-> **[v1.2.0-dev.32](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.2.0-dev.32)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全9パッチ
+> **[v1.2.0-dev.33](https://github.com/yuubinnkyoku/morphe-tver-patch/releases/tag/v1.2.0-dev.33)**&nbsp;&nbsp;•&nbsp;&nbsp;`dev`&nbsp;&nbsp;•&nbsp;&nbsp;全9パッチ
 <details open>
 <summary>📦 TVer&nbsp;&nbsp;•&nbsp;&nbsp;9 パッチ</summary>
 <br>

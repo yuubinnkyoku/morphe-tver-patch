@@ -1,3 +1,9 @@
+## [1.2.0-dev.33](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.32...v1.2.0-dev.33) (2026-11-27)
+
+### 🐛 Bug Fixes
+
+* keep live playback alive through PiP entry and background stop ([bdeab43](https://github.com/yuubinnkyoku/morphe-tver-patch/commit/bdeab4383c0ac8959f25ee34a6e3d14e45d3a5d9))
+
 ## [1.2.0-dev.32](https://github.com/yuubinnkyoku/morphe-tver-patch/compare/v1.2.0-dev.31...v1.2.0-dev.32) (2026-11-20)
 
 ### 🐛 Bug Fixes
